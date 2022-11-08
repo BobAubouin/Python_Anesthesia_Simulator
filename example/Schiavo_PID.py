@@ -6,85 +6,81 @@ Created on Mon Apr 25 13:32:55 2022
 @author: aubouinb
 """
 
-""" MISO PID control of anesthesia from "Individualized PID tuning for maintenance of general anesthesia with
+"""MISO PID control of anesthesia from "Individualized PID tuning for maintenance of general anesthesia with
 propofol and remifentanil coadministration" Michele Schiavo, Fabrizio Padula, Nicola Latronico, 
 Massimiliano Paltenghi,Antonio Visioli 2022"""
 
+# Since the file is on a subfolder of the git we need to add the main folder to the path
+from pathlib import Path
+import sys
+path_root = Path(__file__).parents[1]
+sys.path.append(str(path_root))
+
+from src.PAS import Patient, disturbances, metrics
 
 import numpy as np
-
-from Patient import Patient
-from PID import PID
+import pandas as pd
+from Controller import PID
 from pyswarm import pso
 import casadi as cas
-from bokeh.plotting import figure, show, output_notebook
-from bokeh.layouts import gridplot, row, column
-from bokeh.models import Range1d
+from bokeh.plotting import figure, show
+from bokeh.layouts import row, column
+from bokeh.models import HoverTool
+
 #Patient table:
 #index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
-Patient_table = [[1,  40, 163, 54, 0, 6.33, 12.5, 2.24, 2.00, 98.8, 94.1],
-                 [2,  36, 163, 50, 0, 6.76, 12.7, 4.29, 1.50, 98.6, 86],
-                 [3,  28, 164, 52, 0, 8.44, 7.1,  4.10, 1.00, 91.2, 80.7],
-                 [4,  50, 163, 83, 0, 6.44, 11.1, 2.18, 1.30, 95.9, 102],
-                 [5,  28, 164, 60, 1, 4.93, 12.5, 2.46, 1.20, 94.7, 85.3],
-                 [6,  43, 163, 59, 0, 12.0, 12.7, 2.42, 1.30, 90.2, 147],
-                 [7,  37, 187, 75, 1, 8.02, 10.5, 2.10, 0.80, 92.0, 104],
-                 [8,  38, 174, 80, 0, 6.56, 9.9,  4.12, 1.00, 95.5, 76.4],
-                 [9,  41, 170, 70, 0, 6.15, 11.6, 6.89, 1.70, 89.2, 63.8],
-                 [10, 37, 167, 58, 0, 13.7, 16.7, 3.65, 1.90, 83.1, 151],
-                 [11, 42, 179, 78, 1, 4.82, 14.0, 1.85, 1.20, 91.8, 77.9],
-                 [12, 34, 172, 58, 0, 4.95, 8.8,  1.84, 0.90, 96.2, 90.8],
-                 [13, 38, 169, 65, 0, 7.42, 10.5, 3.00, 1.00, 93.1, 96.58]]
-
-Disturb_point_1 = np.array([[0,     0,  0, 0  ], #time, BIS signal, MAP, CO signals
-                            [9.9,   0,  0, 0  ],
-                            [10,   20, 10, 0.6],
-                            [12,   20, 10, 0.6],
-                            [13,    0,  0, 0  ],
-                            [19.9,  0,  0, 0  ],
-                            [20.2, 20, 10, 0.5],
-                            [21,   20, 10, 0.5],
-                            [21.5,  0,  0, 0  ],
-                            [26,  -20,-10,-0.8],
-                            [27,   20, 10, 0.9],
-                            [28,   10,  7, 0.2],
-                            [36,   10,  7, 0.2],
-                            [37,   30, 15, 0.8],
-                            [37.5, 30, 15, 0.8],
-                            [38,   10,  5, 0.2],
-                            [41,   10,  5, 0.2],
-                            [41.5, 30, 10, 0.5],
-                            [42,   30, 10, 0.5],
-                            [43,   10,  5, 0.2],
-                            [47,   10,  5, 0.2],
-                            [47.5, 30, 10, 0.9],
-                            [50,   30,  8, 0.9],
-                            [51,   10,  5, 0.2],
-                            [56,   10,  5, 0.2],
-                            [56.5,  0,  0, 0  ]])
+Patient_table = [[1,  40, 163, 54, 0, 3.8, 18.3, 1.00, 0, 91.1, 94.3],
+                 [2,  36, 163, 50, 0, 3.2, 28.6,  1.3, 0, 92.6, 100],
+                 [3,  28, 164, 52, 0, 3.1,  4.9,    1, 0,   97, 94],
+                 [4,  50, 163, 83, 0, 5.1, 20.5,  0.7, 0, 97.9, 98.3],
+                 [5,  28, 164, 60, 1, 6.5, 30.1,  1.6, 0,  100,  86.7],
+                 [6,  43, 163, 59, 0, 6.2, 23.1,  0.6, 0,   80, 88.6],
+                 [7,  37, 187, 75, 1, 5. , 16.7,  1.8, 0,   97, 94.8],
+                 [8,  38, 174, 80, 0, 2.7, 15.3,  1.6, 0, 97.2, 92.8],
+                 [9,  41, 170, 70, 0, 3.5, 15.5,  0.6, 0,  100,  95.3],
+                 [10, 37, 167, 58, 0, 4.5, 14.8,  1.5, 0,  100,  89. ],
+                 [11, 42, 179, 78, 1, 6.3,   22,  1.7, 0, 97.6, 85.9],
+                 [12, 34, 172, 58, 0, 6.2, 18.5,  1.7, 0, 90.4, 100],
+                 [13, 38, 169, 65, 0, 2.8, 14.6,  1.6, 0, 82.9, 98.7]]
 
 
-def simu(style, P, Patient_index, Patient_table):
-    age = Patient_table[Patient_index-1][1]
-    height = Patient_table[Patient_index-1][2]
-    weight = Patient_table[Patient_index-1][3]
-    gender = Patient_table[Patient_index-1][4]
-    Ce50p = Patient_table[Patient_index-1][5]
-    Ce50r = Patient_table[Patient_index-1][6]
-    gamma = Patient_table[Patient_index-1][7]
-    beta = Patient_table[Patient_index-1][8]
-    E0 = Patient_table[Patient_index-1][9]
-    Emax = Patient_table[Patient_index-1][10]
+
+def simu(Patient_info: list,style: str, PID_param: list, random_PK: bool = False, random_PD: bool = False):
+    ''' This function perform a closed-loop Propofol-Remifentanil anesthesia simulation with a PID controller.
     
-    George = Patient(age, height, weight, gender, C50p_BIS = Ce50p, C50r_BIS = Ce50r, gamma_BIS = gamma, beta_BIS = beta, E0_BIS = E0, Emax_BIS = Emax)
+    Inputs: - Patient_info: list of patient informations, Patient_info = [Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax]
+            - style: either 'induction' or 'maintenance' to describe the phase to simulate
+            - MPC_param: parameter of the PID controller P = [N, Q, R]
+            - random: bool to add uncertainty to simulate intra-patient variability in the patient model
+    
+    Outputs:- IAE: Integrated Absolute Error, performance index of the function
+            - data: list of the signals during the simulation data = [BIS, MAP, CO, up, ur]
+    '''
+    
+    age = Patient_info[0]
+    height = Patient_info[1]
+    weight = Patient_info[2]
+    gender = Patient_info[3]
+    Ce50p = Patient_info[4]
+    Ce50r = Patient_info[5]
+    gamma = Patient_info[6]
+    beta = Patient_info[7]
+    E0 = Patient_info[8]
+    Emax = Patient_info[9]
+    
+    ts = 5
+    
+    BIS_param = [Ce50p, Ce50r, gamma, beta, E0, Emax]
+    George = Patient.Patient(age, height, weight, gender, BIS_param = BIS_param,
+                             Random_PK = random_PK, Random_PD = random_PD, Te = ts)#, model_propo = 'Eleveld', model_remi = 'Eleveld')
     
     
     
     BIS_cible = 50
     up_max = 6.67
-    ur_max = 16.67 
-    ratio = P[3]
-    PID_controller = PID(Kp = P[0], Ti = P[1], Td = P[2],
+    ur_max = 16.67
+    ratio = PID_param[3]
+    PID_controller = PID(Kp = PID_param[0], Ti = PID_param[1], Td = PID_param[2],
                       N = 5, Te = 1, umax = max(up_max, ur_max/ratio), umin = 0)
     
     if style=='induction':
@@ -101,15 +97,16 @@ def simu(style, P, Patient_index, Patient_table):
             
             uR = min(ur_max,max(0,uP*ratio))
             uP = min(up_max,max(0,uP))
-            Bis,Co,Map = George.one_step(uP, uR, noise = False)
+            Bis, Co, Map = George.one_step(uP, uR, noise = False)
             BIS[i] = Bis
             MAP[i] = Map[0,0]
             CO[i] = Co[0,0]
             Up[i] = uP
             Ur[i] = uR
             uP = PID_controller.one_step(Bis,BIS_cible)
-    if style=='stabilization':
-        N_simu = 70*60
+            
+    if style=='maintenance':
+        N_simu = 25*60 #25 minutes
         BIS = np.zeros(N_simu)
         MAP = np.zeros(N_simu)
         CO = np.zeros(N_simu)
@@ -131,16 +128,16 @@ def simu(style, P, Patient_index, Patient_table):
         Ar = np.array(George.RemiPK.A)
         Br = np.array(George.RemiPK.B)
         
-        x0p = np.linalg.solve(Ap,Bp*up_max/2)
-        x0r = np.linalg.solve(Ar,Br*up_max)
+        x0p = np.linalg.solve(Ap,Bp*up_max/20)
+        x0r = np.linalg.solve(Ar,Br*up_max/10)
         xp = cas.MX.sym('xp',4)
-        w0 += x0p.tolist()
+        w0 += x0p[:,0].tolist()
         xr = cas.MX.sym('xr',4)
-        w0 += x0r.tolist()
+        w0 += x0r[:,0].tolist()
         UP = cas.MX.sym('up',1)
         w = [xp,xr,UP]
         w0 += [up_max/2]
-        lbw = [0]*8 + [1]
+        lbw = [1e-6]*9
         ubw = [1e4]*9
         
         up = xp[3] / Ce50p
@@ -148,107 +145,267 @@ def simu(style, P, Patient_index, Patient_table):
         Phi = up/(up + ur)
         U_50 = 1 - beta * (Phi - Phi**2)
         i = (up + ur)/U_50
-        J = (50 - (E0 + Emax * i ** gamma / (1 + i ** gamma)))**2
-        
+        J = (50 - (E0 - Emax * i ** gamma / (1 + i ** gamma)))**2
         
 
-        
         g = [Ap @ xp + Bp * UP, Ar @ xr + Br * (ratio*UP)]
-        lbg = [-1e-5]*8
-        ubg = [1e-5]*8
+        lbg = [-1e-8]*8
+        ubg = [1e-8]*8
         
         prob = {'f': J, 'x': cas.vertcat(*w), 'g': cas.vertcat(*g)}
-        solver = cas.nlpsol('solver', 'ipopt', prob, {'ipopt.max_iter': 300})
+        solver = cas.nlpsol('solver', 'ipopt', prob, {'ipopt.max_iter': 300, 'verbose':False},)
         sol = solver(x0=w0, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
         w_opt = sol['x'].full().flatten()
         
+        #set the patien at the equilibrium point
         George.PropoPK.x = np.expand_dims(np.array(w_opt[:4]),axis=1)
         George.RemiPK.x = np.expand_dims(np.array(w_opt[4:8]),axis=1)
+        George.Hemo.CeP = w_opt[3]
+        George.Hemo.CeR = w_opt[7]
         uP = w_opt[-1]
-        for i in range(N_simu):
-            # if i == 100:
-            #     print("break")
-            
+        #initialize the PID at the equilibriium point
+        PID_controller.integral_part = uP/PID_controller.Kp
+        PID_controller.last_BIS = 50
+        for i in range(N_simu):   
             uR = min(ur_max,max(0,uP*ratio))
             uP = min(up_max,max(0,uP))
-            Bis,Co,Map = George.one_step(uP, uR, noise = True)
-            BIS[i] = min(100,Bis + np.interp(i/60, Disturb_point_1[:,0], Disturb_point_1[:,1]))
-            MAP[i] = Map[0,0] + np.interp(i/60, Disturb_point_1[:,0], Disturb_point_1[:,2]) 
-            CO[i] = Co[0,0] + np.interp(i/60, Disturb_point_1[:,0], Disturb_point_1[:,3]) 
+            Bis,Co,Map = George.one_step(uP, uR, noise = False)
+            dist_bis, dist_map, dist_co = disturbances.compute_disturbances(i, 'realistic')
+            BIS[i] = min(100,Bis) + dist_bis
+            MAP[i] = Map[0,0] + dist_map
+            CO[i] = Co[0,0] + dist_co 
             Up[i] = uP
             Ur[i] = uR
             uP = PID_controller.one_step(BIS[i] ,BIS_cible)
-            if i==55*60:
-                BIS_cible=100
+
         
     IAE = np.sum(np.abs(BIS - BIS_cible))
-    return IAE, [BIS, MAP, CO, Up, Ur]
-        
-        
-        
-
+    return IAE, [BIS, MAP, CO, Up, Ur], George.BisPD.BIS_param
+         
 
 
 #%% PSO
-# ratio = 2   
-# def banana(x):
-#     IAE = []
-#     ratio = 2
-#     for i in range(13):
-#         iae, data = simu('induction', [x[0], x[1], x[2], ratio], i+1, Patient_table)
-#         IAE.append(iae)
-#     return max(IAE)
 
-# lb = [1e-6, 100, 10]
-# ub =[1,300,40]
-# xopt, fopt = pso(banana, lb, ub, debug = True, minfunc = 1e-3) #Default: 100 particles as in the article
+def cost(x, ratio):
+    '''cost of the optimization, x is the vector of the PID controller
+    x = [Kp, Ti, Td]
+    IAE is the maximum integrated absolut error over the patient population'''
+    IAE = []
+    for i in range(13):
+        Patient_info = Patient_table[i-1][1:]
+        iae, data, truc = simu(Patient_info, 'induction', [x[0], x[1], x[2], ratio])
+        IAE.append(iae)
+    return max(IAE)
 
-# print(xopt)
-# P = [xopt[0], xopt[1], xopt[2], ratio]
-#%%test
+try: 
+    param_opti = pd.read_csv('optimal_parameters.csv')
+except:
+    param_opti = pd.DataFrame(columns=['ratio','Kp','Ti','Td'])
+    for ratio in range(2,3): 
+        local_cost = lambda x: cost(x, ratio)
+        lb = [1e-6, 100, 10]
+        ub =[1,300,40]
+        xopt, fopt = pso(local_cost, lb, ub, debug = True, minfunc = 1e-2) #Default: 100 particles as in the article
+        param_opti = pd.concat((param_opti, pd.DataFrame({'ratio': ratio, 'Kp':xopt[0], 'Ti':xopt[1], 'Td':xopt[2]}, index=[0])), ignore_index=True)
+        print(ratio)
+        
+    param_opti.to_csv('optimal_parameters.csv')
 
-#xoptimal
-# P = [0.43886005037982306, 173.35958590681594, 20.0, 2]
-# P = [0.48272254, 196.10932941,  16.35625313, 2] 
-P = [0.007945134003877127, 195.54111899704745, 17.166289073381094, 2]
-ratio_list = [0.5, 2.5, 15]
-IAE = []
-TT = [0]*13
+#%%test on patient table
+
+
+# phase = 'induction'
+
+
+# IAE_list = []
+# TT_list = []
+# p1 = figure(plot_width=900, plot_height=300)
+# p2 = figure(plot_width=900, plot_height=300)
+# p3 = figure(plot_width=900, plot_height=300)
+# for ratio in range(2,3): #
+#     print('ratio = ' + str(ratio))
+#     Kp = float(param_opti.loc[param_opti['ratio']==ratio, 'Kp'])
+#     Ti = float(param_opti.loc[param_opti['ratio']==ratio, 'Ti'])
+#     Td = float(param_opti.loc[param_opti['ratio']==ratio, 'Td'])
+#     PID_param = [Kp, Ti, Td, ratio]
+#     for i in range(1,14):
+#         Patient_info = Patient_table[i-1][1:]
+#         IAE, data = simu(Patient_info, phase, PID_param)
+#         p1.line(np.arange(0,len(data[0]))/60, data[0])
+#         p2.line(np.arange(0,len(data[0]))/60, data[1], legend_label='MAP (mmgh)')
+#         p2.line(np.arange(0,len(data[0]))/60, data[2]*10, legend_label='CO (cL/min)', line_color="#f46d43")
+#         p3.line(np.arange(0,len(data[3]))/60, data[3], line_color="#006d43", legend_label='propofol (mg/min)')
+#         p3.line(np.arange(0,len(data[4]))/60, data[4], line_color="#f46d43", legend_label='remifentanil (ng/min)')
+#         TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(data[0], Te = 1, phase = phase)
+#         TT_list.append(TT)
+#         IAE_list.append(IAE)
+# p1.title.text = 'BIS'
+# p3.title.text = 'Infusion rates'
+# p3.xaxis.axis_label = 'Time (min)'
+# grid = row(column(p3,p1,p2))
+
+# show(grid)
+
+# print("Mean IAE : " + str(np.mean(IAE_list)))
+# print("Mean TT : " + str(np.mean(TT_list)))
+# print("Min TT : " + str(np.min(TT_list)))
+# print("Max TT : " + str(np.max(TT_list)))
+
+#%% inter-patient variability test
+#Simulation parameter
+# phase = 'induction'
+# ratio = 2
+# Number_of_patient = 500
+
+# # Controller parameters
+# Kp = float(param_opti.loc[param_opti['ratio']==ratio, 'Kp'])
+# Ti = float(param_opti.loc[param_opti['ratio']==ratio, 'Ti'])
+# Td = float(param_opti.loc[param_opti['ratio']==ratio, 'Td'])
+# PID_param = [Kp, Ti, Td, ratio]
+
+
+# IAE_list = []
+# TT_list = []
+# p1 = figure(plot_width=900, plot_height=300)
+# p2 = figure(plot_width=900, plot_height=300)
+# p3 = figure(plot_width=900, plot_height=300)
+
+# for i in range(Number_of_patient):
+#     if i%20==0:
+#         print(i)
+#     #Generate random patient information with uniform distribution
+#     age = np.random.randint(low=18,high=70)
+#     height = np.random.randint(low=150,high=190)
+#     weight = np.random.randint(low=50,high=100)
+#     gender = np.random.randint(low=0,high=1)
+#     #generate PD model with normal distribution from Bouillon et al.
+#     Ce50p = np.random.normal(loc = 4.47, scale = 4.92*0.066)
+#     Ce50r = np.random.normal(loc = 19.3, scale = 8*0.394) 
+#     gamma = np.random.normal(loc = 1.43, scale = 1.43*0.142)
+#     beta = 0 
+#     E0 = min(100, np.random.normal(loc = 97.4, scale = 97.4*0.005)) #standard deviation not gived in the article, arbitrary fixed to 5% 
+#     Emax = E0 
+
+#     Patient_info = [age, height, weight, gender, Ce50p, Ce50r, gamma, beta, E0, Emax]
+#     IAE, data = simu(Patient_info, phase, PID_param)
+#     p1.line(np.arange(0,len(data[0]))/60, data[0])
+#     p2.line(np.arange(0,len(data[0]))/60, data[1], legend_label='MAP (mmgh)')
+#     p2.line(np.arange(0,len(data[0]))/60, data[2]*10, legend_label='CO (cL/min)', line_color="#f46d43")
+#     p3.line(np.arange(0,len(data[3]))/60, data[3], line_color="#006d43", legend_label='propofol (mg/min)')
+#     p3.line(np.arange(0,len(data[4]))/60, data[4], line_color="#f46d43", legend_label='remifentanil (ng/min)')
+#     TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(data[0], Te = 1, phase = phase)
+#     TT_list.append(TT)
+#     IAE_list.append(IAE)
+    
+# p1.title.text = 'BIS'
+# p3.title.text = 'Infusion rates'
+# p3.xaxis.axis_label = 'Time (min)'
+# grid = row(column(p3,p1,p2))
+
+# show(grid)
+
+# print("Mean IAE : " + str(np.mean(IAE_list)))
+# print("Mean TT : " + str(np.mean(TT_list)))
+# print("Min TT : " + str(np.min(TT_list)))
+# print("Max TT : " + str(np.max(TT_list)))
+
+
+
+#%% Intra patient variability
+
+
+#Simulation parameter
+phase = 'induction'
+ratio = 2
+Number_of_patient = 100
+
+# Controller parameters
+Kp = float(param_opti.loc[param_opti['ratio']==ratio, 'Kp'])
+Ti = float(param_opti.loc[param_opti['ratio']==ratio, 'Ti'])
+Td = float(param_opti.loc[param_opti['ratio']==ratio, 'Td'])
+PID_param = [Kp, Ti, Td, ratio]
+
+
+IAE_list = []
+TT_list = []
+ST10_list = []
+ST20_list = []
+US_list = []
+BIS_NADIR_list = []
 p1 = figure(plot_width=900, plot_height=300)
 p2 = figure(plot_width=900, plot_height=300)
 p3 = figure(plot_width=900, plot_height=300)
-for ratio in range(4,5): #
-    ratio = ratio/2
-    Kp = (0.053*ratio**(-0.35) - 0.013)
-    Ti = 206.98
-    Td = 29.83 
-    P[3] = ratio
-    # Kp = -0.0598
-    # Ti = 28.476
-    # Td = 2.368
-    # P = [Kp, Ti, Td, ratio]
-    for i in range(1,2):
-        iae, data = simu('stabilization', P, i+2, Patient_table)
-        p1.line(np.arange(0,len(data[0]))/60, data[0])
-        p2.line(np.arange(0,len(data[0]))/60, data[1], legend_label='MAP (mmgh)')
-        p2.line(np.arange(0,len(data[0]))/60, data[2]*10, legend_label='CO (cL/min)', line_color="#f46d43")
-        p3.line(np.arange(0,len(data[3]))/60, data[3], line_color="#006d43", legend_label='propofol (mg/min)')
-        #p3.line(np.arange(0,len(data[4]))/60, data[4], line_color="#f46d43", legend_label='remifentanil (ng/min)')
-        for j in range(len(data[0])):
-            if data[0][j]<55:
-                TT[i] = j/60
-                break
-        IAE.append(iae)
+for i in range(Number_of_patient):
+    #Generate random patient information with uniform distribution
+    age = np.random.randint(low=18,high=70)
+    height = np.random.randint(low=150,high=190)
+    weight = np.random.randint(low=50,high=100)
+    gender = np.random.randint(low=0,high=1)
+
+    Patient_info = [age, height, weight, gender] + [None]*6
+    IAE, data, BIS_param = simu(Patient_info, phase, PID_param, random_PD = True, random_PK=True)
+    source = pd.DataFrame(data = data[0], columns = ['BIS'])
+    source.insert(len(source.columns),"time", np.arange(0,len(data[0]))*5/60)
+    source.insert(len(source.columns),"Ce50_P", BIS_param[0])
+    source.insert(len(source.columns),"Ce50_R", BIS_param[1])
+    source.insert(len(source.columns),"gamma", BIS_param[2])
+    source.insert(len(source.columns),"beta", BIS_param[3])
+    source.insert(len(source.columns),"E0", BIS_param[4])
+    source.insert(len(source.columns),"Emax", BIS_param[5])
+    
+    plot = p1.line(x = 'time', y = 'BIS', source = source)
+    tooltips = [('Ce50_P',"@Ce50_P"), ('Ce50_R',"@Ce50_R"),
+                ('gamma',"@gamma"), ('beta',"@beta"),
+                ('E0',"@E0"), ('Emax',"@Emax")]
+    p1.add_tools(HoverTool(renderers=[plot], tooltips=tooltips))
+    # p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
+    p2.line(np.arange(0,len(data[0]))*5/60, data[1], legend_label='MAP (mmgh)')
+    p2.line(np.arange(0,len(data[0]))*5/60, data[2]*10, legend_label='CO (cL/min)', line_color="#f46d43")
+    p3.line(np.arange(0,len(data[3]))*5/60, data[3], line_color="#006d43", legend_label='propofol (mg/min)')
+    p3.line(np.arange(0,len(data[4]))*5/60, data[4], line_color="#f46d43", legend_label='remifentanil (ng/min)')
+    TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(data[0], Te = 5, phase = phase)
+    TT_list.append(TT)
+    BIS_NADIR_list.append(BIS_NADIR)
+    ST10_list.append(ST10)
+    ST20_list.append(ST20)
+    US_list.append(US)
+    IAE_list.append(IAE)
+
 p1.title.text = 'BIS'
 p3.title.text = 'Infusion rates'
 p3.xaxis.axis_label = 'Time (min)'
-grid = row(column(p3,p1,p2),p3)
+grid = row(column(p3,p1,p2))
 
 show(grid)
 
+print("Mean IAE : " + str(np.mean(IAE_list)))
+print("Mean ST10 : " + str(np.round(np.nanmean(ST10_list),2)))
+print("Min ST10 : " + str(np.round(np.nanmin(ST10_list),2)))
+print("Max ST10 : " + str(np.round(np.nanmax(ST10_list),2)))
 
-print(np.mean(IAE))
-        
-print(np.mean(TT))
-print(np.min(TT))
-print(np.max(TT))
+result_table = pd.DataFrame()
+result_table.insert(len(result_table.columns),"", ['mean','std','min','max'])
+result_table.insert(len(result_table.columns),"TT (min)", [np.round(np.nanmean(TT_list),2),
+                                                   np.round(np.nanstd(TT_list),2),
+                                                   np.round(np.nanmin(TT_list),2),
+                                                   np.round(np.nanmax(TT_list),2)])
+result_table.insert(len(result_table.columns),"BIS_NADIR", [np.round(np.nanmean(BIS_NADIR_list),2),
+                                                   np.round(np.nanstd(BIS_NADIR_list),2),
+                                                   np.round(np.nanmin(BIS_NADIR_list),2),
+                                                   np.round(np.nanmax(BIS_NADIR_list),2)])
+result_table.insert(len(result_table.columns),"ST10 (min)", [np.round(np.nanmean(ST10_list),2),
+                                                   np.round(np.nanstd(ST10_list),2),
+                                                   np.round(np.nanmin(ST10_list),2),
+                                                   np.round(np.nanmax(ST10_list),2)])
+result_table.insert(len(result_table.columns),"ST20 (min)", [np.round(np.nanmean(ST20_list),2),
+                                                   np.round(np.nanstd(ST20_list),2),
+                                                   np.round(np.nanmin(ST20_list),2),
+                                                   np.round(np.nanmax(ST20_list),2)])
+result_table.insert(len(result_table.columns),"US", [np.round(np.nanmean(US_list),2),
+                                                   np.round(np.nanstd(US_list),2),
+                                                   np.round(np.nanmin(US_list),2),
+                                                   np.round(np.nanmax(US_list),2)])
+
+print(result_table.to_latex(index=False))
+
+

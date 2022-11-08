@@ -3,13 +3,16 @@ import control
 from matplotlib import pyplot as plt
 from matplotlib import cm
 import copy
+from scipy.stats import truncnorm
+
+def truncated_normal(mean=0, sd=1, low=0, upp=10):
+    return truncnorm(
+        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd).rvs()
 
 def Hill_function(x:float, x_50:float, gamma:float):
     """simple Hill function"""
     return x**gamma/(x_50**gamma + x**gamma)
 
-class model_():
-    pass
 
 def discretize(A:list ,B:list, C:list, D:list, Te:float, method:str):
     """This method discretize a LTI system with form x+=Ax+Bu, y = Cx+Du. given in min^-1
@@ -17,12 +20,12 @@ def discretize(A:list ,B:list, C:list, D:list, Te:float, method:str):
                               "Euler": Euler method
                               "Rung-Kuta": use order 4 of Rung kunta method to discretize the system."""
     if method=='exact':
-        model = control.ss(np.array(A)/60, B, C, D)
-        model = control.sample_system(model, Te)
+        model = control.ss(np.array(A), B, C, D)
+        model = control.sample_system(model, Te/60)
         A_d, B_d, C_d, D_d = model.A, model.B, model.C, model.C
-    elif method=='Euler':
-        A_d = np.eye(4) + Te/60 * np.array(A)
-        B_d = np.expand_dims(Te/60 * np.array(B), axis =1)
+    elif method=='euler':
+        A_d = np.eye(4) + Te/60 * A
+        B_d = Te/60 * B
         C_d = C
         D_d = D
     return  A_d, B_d, C_d, D_d   
@@ -37,7 +40,7 @@ class PKmodel:
     def __init__(self, age: float, height: float,
                  weight: float, sex: bool, lbm: float,
                  drug: str, Te : float =1, model :str = 'Minto',
-                 random: bool = False, x0: list = np.zeros([4, 1])):
+                 random: bool = False, x0: list = np.ones([4, 1])*1e-4):
         """Input:
             - age: float, in year
             - height:float, in cm
@@ -82,7 +85,7 @@ class PKmodel:
                 cv_cl1 = cl1*0.1005
                 cv_cl2 = cl2*0.01
                 cv_cl3 = cl3*0.1179
-                cv_ke = ke0*0.68
+                cv_ke = ke0*0.42 #The real value seems to be not available in the article
                 
             elif model=='Marsh':
                 # see B. Marsh, M. White, N. morton, and G. N. C. Kenny, “Pharmacokinetic model Driven Infusion of Propofol in Children,”
@@ -210,7 +213,7 @@ class PKmodel:
                 cv_v3 = v3*0.66
                 cv_cl1 = cl1*0.14
                 cv_cl2 = cl2*0.36
-                cv_cl3 = cl3*0.41
+                cv_cl3 = cl3*0.41 
                 cv_ke = ke0*0.68
                 
             elif model=='Eleveld':
@@ -220,7 +223,9 @@ class PKmodel:
                 #function used in the model
                 faging = lambda x: np.exp(x * (age - 35))
                 fsig = lambda x,C50,gam :  x**gam/(C50**gam + x**gam)
- 
+                
+                BMI = weight/(height/100)**2
+                BMIref = 70/1.7**2
                 if sex:
                     FFM = (0.88 + (1-0.88)/(1+(age/13.4)**(-12.7))) * (9270 * weight)/(6680 + 216*BMI)
                     KSEX = 1
@@ -263,9 +268,9 @@ class PKmodel:
         self.A_nom = np.array([[-(self.k10 + self.k12 + self.k13), k21, k31, 0],
                               [self.k12, -k21, 0, 0],
                               [self.k13, 0, -k31, 0],
-                              [k1e, 0, 0, -ke0]])
+                              [k1e, 0, 0, -ke0]]) #1/min
 
-        self.B_nom = np.transpose([1/self.v1, 0, 0, 0])
+        self.B_nom = np.transpose(np.array([[60/self.v1, 0, 0, 0]])) # min/s/L
         self.C = np.array([[1, 0, 0, 0,],[0, 0, 0, 1]])
         self.D = 0
         
@@ -274,21 +279,21 @@ class PKmodel:
             if model=='Marsh':
                 print("Warning: the standard deviation of the Marsh model are not know, it is set to 100% for each variable")
                 
-            self.v1 = max(0, self.v1 + np.random.normal(scale = cv_v1))
-            cl2 = max(0, cl2 + np.random.normal(scale = cv_cl2))
-            cl3 = max(0, cl3 + np.random.normal(scale = cv_cl3))
-            self.k10 = (cl1 + np.random.normal(scale = cv_cl1)) / self.v1
+            self.v1 = truncated_normal(mean=self.v1, sd=cv_v1, low=self.v1/4, upp=self.v1*4)
+            cl2 = truncated_normal(mean=cl2, sd=cv_cl2, low=cl2/4, upp=cl2*4)
+            cl3 = truncated_normal(mean=cl3, sd=cv_cl3, low=cl3/4, upp=cl3*4)
+            self.k10 = truncated_normal(mean=cl1, sd=cv_cl1, low=cl1/4, upp=cl1*4)/ self.v1
             self.k12 = cl2 / self.v1
             self.k13 = cl3 / self.v1
-            k21 = cl2 / (v2 + np.random.normal(scale = cv_v2))
-            k31 = cl3 / (v3 + np.random.normal(scale = cv_v3))
-            ke0 = max(0, ke0 + np.random.normal(scale = cv_ke))
+            k21 = cl2 / truncated_normal(mean=v2, sd=cv_v2, low=v2/4, upp=v2*4)
+            k31 = cl3 / truncated_normal(mean=v3, sd=cv_v3, low=v3/4, upp=v3*4)
+            ke0 = truncated_normal(mean=ke0, sd=cv_ke, low=ke0/4, upp=ke0*4)
             k1e = ke0
             self.A = np.array([[-(self.k10 + self.k12 + self.k13), k21, k31, 0],
                                   [self.k12, -k21, 0, 0],
                                   [self.k13, 0, -k31, 0],
                                   [k1e, 0, 0, -ke0]])
-            self.B = np.transpose([1/self.v1, 0, 0, 0])
+            self.B = np.transpose(np.array([[60/self.v1, 0, 0, 0]])) # min/s/L
         else:
             self.A = self.A_nom
             self.B = self.B_nom
@@ -300,13 +305,13 @@ class PKmodel:
         self.y = np.dot(self.C, self.x)
 
     def one_step(self, u: float):
-        """Simulate on step of PK model with infusion rate u (mg/ml/min) and return the actual blood and effect site concentration (mg/ml)"""
+        """Simulate on step of PK model with infusion rate u (mg/s) and return the actual blood and effect site concentration (mg/L)"""
         self.x = np.dot(self.A_d, self.x) + np.dot(self.B_d, u)
         self.y = np.dot(self.C_d, self.x) + np.dot(self.D_d, u)
         return self.y
 
     def update_coeff_CO(self, CO: float, CO_init : float = 6.5):
-        """Update PK coefficient with a linearl function of Cardiac output value"""
+        """Update PK coefficient with a linear function of Cardiac output value"""
         coeff = 1
         Anew = copy.deepcopy(self.A)
         Anew[0][0] +=  coeff * Anew[0][0] * (CO - CO_init) / CO_init
@@ -319,23 +324,42 @@ class PKmodel:
         self.A_d, self.B_d, self.C_d, self.D_d = discretize(Anew, self.B, self.C, self.D, self.Te, method="exact")
         
 class Bismodel:
-    def __init__(self, c50p: float = 4.6, c50r: float = 12, gamma: float = 2.44, sigma: float = 0.2, Emax = None, E0 = None, beta = None):
-        """Init a Hill curv model to link BIS to Propofol and Remifentanil effect site concentration"""
-        self.sigma = sigma
-        self.gamma = gamma
-        self.c50p = c50p
-        self.c50r = c50r
-        if E0 is None:
-            self.E0 = 100
-        else:
-            self.E0 = E0
-        if Emax is None:
-            self.Emax = 100
-        else:
-            self.Emax = E0
-            
-        self.beta = beta
-            
+    def __init__(self, model: str, BIS_param: list = [None]*6, random: bool = False):
+        """Init a Hill curv model to link BIS to Propofol and Remifentanil effect site concentration
+        Inputs: - model: only Bouillon is available now
+                - BIS_param: Parameter of the BIS model (Propo Remi interaction) list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]
+                    - C50p_BIS : Concentration at half effect for propofol effect on BIS
+                    - C50r_BIS : Concentration at half effect for remifentanil effect on BIS
+                    - gamma_BIS : slope coefficient for the BIS  model,
+                    - beta_BIS : interaction coefficient for the BIS model,
+                    - E0_BIS : initial BIS,
+                    - Emax_BIS : max effect of the drugs on BIS
+                - Random: add uncertainties in the PK and PD models to study intra-patient variability, default = False"""
+        if BIS_param[0] is not None:
+           self.c50p = BIS_param[0]
+           self.c50r = BIS_param[1]
+           self.gamma = BIS_param[2]
+           self.beta = BIS_param[3]
+           self.E0 = BIS_param[4]
+           self.Emax = BIS_param[5]
+           
+        elif model=='Bouillon':
+            if not random:
+                self.c50p = 4.47
+                self.c50r = 19.3
+                self.beta = 0
+                self.gamma = 1.43
+                self.E0 = 97.4
+                self.Emax = self.E0
+            else:
+                self.c50p = truncated_normal(mean=4.47, sd=4.47*0.3, low=2, upp=8)
+                self.c50r = truncated_normal(mean=19.3, sd=19.3*0.3, low=10, upp=26)
+                self.beta = truncated_normal(mean=0, sd=0.5, low=0, upp=3)
+                self.gamma = truncated_normal(mean=2.43, sd=2.43*0.3, low=1, upp=5)
+                self.E0 = truncated_normal(mean=97.4, sd=97.4*0.1, low=80, upp=100) #standard deviation not given in the article, arbitrary fixed to 10% 
+                self.Emax = truncated_normal(mean=97.4, sd=97.4*0.1, low=75, upp=100) #standard deviation not given in the article, arbitrary fixed to 10%               
+        self.BIS_param = [self.c50p, self.c50r, self.gamma, self.beta, self.E0, self.Emax]
+        
     def compute_bis(self, cep: float, cer: float):
         """Compute BIS function from Propofol and Remifentanil effect site concentration"""
         up = cep / self.c50p
@@ -343,14 +367,11 @@ class Bismodel:
         if self.beta is None:
             i = up + ur + self.sigma * up * ur
         else:
-            if (up+ur)!=0:
-                Phi = up/(up + ur)
-            else:   
-                Phi = 0
+            Phi = up/(up + ur + 1e-6)
             U_50 = 1 - self.beta * (Phi - Phi**2)
             i = (up + ur)/U_50
         bis = self.E0 - self.Emax * i ** self.gamma / (1 + i ** self.gamma)  
-        return bis
+        return max(0,bis)
 
     def inverse_hill(self, BIS: float, cer: float = 0):
         """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration"""
@@ -455,21 +476,21 @@ class Hemodynamics:
         self.BP = ke[0]
         self.C = 1
         self.D = 0
-        self.modelP = model_()
-        self.modelP.A = np.eye(1) + self.Te/60 * np.array(self.AP)
-        self.modelP.B = self.Te/60 * np.array(self.BP)
-        self.modelP.C = np.array(self.C)
-        self.modelP.D = np.array(self.D)
+
+        self.AP_d = np.eye(1) + self.Te/60 * np.array(self.AP)
+        self.BP_d = self.Te/60 * np.array(self.BP)
+        self.CP_d = np.array(self.C)
+        self.DP_d = np.array(self.D)
         # self.modelP = control.ss(self.AP, self.BP, self.C, self.D)
         # self.modelP = control.sample_system(self.modelP, Te/60)
         
         self.AR = -ke[1]
         self.BR = ke[1]
-        self.modelR = model_()
-        self.modelR.A = np.eye(1) + self.Te/60 * np.array(self.AR)
-        self.modelR.B = self.Te/60 * np.array(self.BR)
-        self.modelR.C = np.array(self.C)
-        self.modelR.D = np.array(self.D)
+
+        self.AR_d = np.eye(1) + self.Te/60 * np.array(self.AR)
+        self.BR_d = self.Te/60 * np.array(self.BR)
+        self.CR_d = np.array(self.C)
+        self.DR_d = np.array(self.D)
         # self.modelR = control.ss(self.AR, self.BR, self.C, self.D)
         # self.modelR = control.sample_system(self.modelR, Te/60)
         
@@ -480,8 +501,8 @@ class Hemodynamics:
         """Simulate one step time of the hemodynamic system"""
         
         #Dynamic system
-        self.CeP = self.modelP.A*self.CeP + self.modelP.B * CP_blood
-        self.CeR = self.modelR.A*self.CeR + self.modelR.B * CR_blood
+        self.CeP = self.AP_d*self.CeP + self.BP_d * CP_blood
+        self.CeR = self.AR_d*self.CeR + self.BR_d * CR_blood
         
         #Hill functions
         CO = self.CO_init + self.Emax_CO_P * Hill_function(self.CeP, self.C50_CO_P, self.gamma_CO_P) + self.Emax_CO_R * Hill_function(self.CeR, self.C50_CO_R, self.gamma_CO_R)
@@ -605,7 +626,7 @@ class PBPKmodel:
                            [a21, a22, 0, 0, 0, 0],
                            [a31, 0, a33, 0, 0, 0],
                            [a41, 0, a43, a44, 0, 0],
-                           [a51, 0, 0, 0, a55, 0]
+                           [a51, 0, 0, 0, a55, 0],
                            [self.ke0, 0, 0, 0, 0, self.ke0]])
         self.B = np.array([[1/self.V_P],
                            [0],
