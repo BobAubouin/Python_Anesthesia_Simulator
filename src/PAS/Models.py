@@ -443,8 +443,8 @@ class Hemodynamics:
                  MAP_init: float, 
                  CO_param: list, 
                  MAP_param: list, 
-                 ke: list[float], 
-                 Te: float = 1) -> list[float]:
+                 ke: list, 
+                 Te: float = 1) -> list:
         
         """ Init the Hemodynamic class:
             Inputs:     - CO_init: Initial Cardiac output (L/min)

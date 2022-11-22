@@ -76,7 +76,7 @@ class Patient:
 
         
         
-    def one_step(self, uP: float = 0, uR : float = 0, Dist: list = [0]*3, noise: bool = True) -> list[float]:
+    def one_step(self, uP: float = 0, uR : float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
         """Run the simulation on one step time.
         Inputs:     - uP: Propofol infusion rate (mg/ml/min)
                     - uR: Remifentanil infusion rate (mg/ml/min)

@@ -160,7 +160,7 @@ class NMPC:
             Hk = self.Output(x=Xk)
             bis = Hk['bis']
             
-            J+= self.Q * (bis - Bis_target)**2 + (U-U_prec).T @ self.R @ (U-U_prec)
+            J+= self.Q * ((bis - Bis_target)**2/100 + ((bis - Bis_target - 20)/30)**16) + (U-U_prec).T @ self.R @ (U-U_prec) #+ 
             #J+= self.Q * (bis - Bis_target)**2 + (U).T @ self.R @ (U)
             
             gu += [U-U_prec]
@@ -170,7 +170,7 @@ class NMPC:
             self.ubg_bis += [self.ymax]
             
         opts = {'ipopt.print_level':1, 'print_time':0, 'ipopt.max_iter': 300}
-        prob = {'f': J, 'p': cas.vertcat(*[X0, Bis_target, U_prec_true]), 'x': cas.vertcat(*w), 'g': cas.vertcat(*(gu+gbis))}
+        prob = {'f': J, 'p': cas.vertcat(*[X0, Bis_target, U_prec_true]), 'x': cas.vertcat(*w), 'g': cas.vertcat(*(gu))} #+gbis
         self.solver = cas.nlpsol('solver', 'ipopt', prob, opts)
         
         
@@ -188,8 +188,8 @@ class NMPC:
         if self.internal_target is None:
             self.internal_target = Bis_target
             
-        self.lbg_bis = [self.internal_target - self.dymin]*self.N
-        sol = self.solver(x0=w0, p = list(x) + [self.internal_target] + list(self.U_prec[0:2]), lbx=self.lbw, ubx=self.ubw, lbg=self.lbg_u + self.lbg_bis, ubg=self.ubg_u + self.ubg_bis)
+        self.lbg_bis = [min(90,self.internal_target - self.dymin)]*self.N
+        sol = self.solver(x0=w0, p = list(x) + [self.internal_target] + list(self.U_prec[0:2]), lbx=self.lbw, ubx=self.ubw, lbg=self.lbg_u, ubg=self.ubg_u) # + self.lbg_bis + self.ubg_bis
           
         w_opt = sol['x'].full().flatten()
         
@@ -218,13 +218,15 @@ class NMPC:
                 Hk = self.Output(x=Xk)
                 bis[k] = float(Hk['bis'])
             
-            fig, axs = plt.subplots(2,figsize=(14,16))
+            fig, axs = plt.subplots(2,figsize=(6,8))
             axs[0].plot(Up, label = 'propofol')
             axs[0].plot(Ur, label = 'remifentanil')
-            plt.grid()
+            axs[0].grid()
+            axs[0].legend()
             axs[1].plot(bis, label = 'bis')
-            plt.grid()
-            plt.legend()
+            axs[1].plot([self.internal_target]*len(bis), label = 'bis target')
+            axs[1].grid()
+            axs[1].legend()
             plt.show()
             
         return Up[0], Ur[0]
@@ -423,8 +425,8 @@ class MPC_lin:
          
         Ad, Bd = discretize(A,B,ts)
         self.BIS_param = BIS_param
-        C50p = BIS_param[0]
-        C50r = BIS_param[1]
+        self.C50p = BIS_param[0]
+        self.C50r = BIS_param[1]
         gamma = BIS_param[2]
         beta = BIS_param[3]
         E0 = BIS_param[4]
@@ -453,8 +455,8 @@ class MPC_lin:
         
         Cep = cas.MX.sym('Cep')
         Cer = cas.MX.sym('Cer')
-        up = Cep / C50p
-        ur = Cer / C50r
+        up = Cep / self.C50p
+        ur = Cer / self.C50r
         Phi = up/(up + ur + 1e-6)
         U_50 = 1 - beta * (Phi - Phi**2)
         i = (up + ur)/U_50
@@ -464,7 +466,7 @@ class MPC_lin:
         self.Output = cas.Function('Output', [Cep, Cer], [bis],['Cep', 'Cer'], ['bis'])
         self.Output_grad = cas.Function('Output', [Cep, Cer], [H],['Cep', 'Cer'], ['H'])
         
-        self.U_prec = [10]*N*2
+        self.U_prec = [0]*Nu*2
         self.Bis_target_Ce = None
         
         #integrator
@@ -476,7 +478,7 @@ class MPC_lin:
         Grad = self.Output_grad(Cep = self.Cep_target, Cer = self.Cer_target)
         self.a = Grad['H'][0]
         self.b = Grad['H'][1]
-        self.c = Bis_target - (self.a*self.Cep_target + self.b*self.Cer_target)
+        self.c = self.Bis_target_Ce - (self.a*self.Cep_target + self.b*self.Cer_target)
         
         Cep = cas.MX.sym('Cep')
         Cer = cas.MX.sym('Cer')
@@ -526,9 +528,9 @@ class MPC_lin:
             self.ubg_u += self.dumax
             self.ubg_bis += [100]
             
-        opts = {'ipopt.print_level':1, 'print_time':0, 'ipopt.max_iter': 300}
-        prob = {'f': J, 'p': cas.vertcat(*[X0, Bis_target, U_prec_true]), 'x': cas.vertcat(*w), 'g': cas.vertcat(*(gu+gbis))}
-        self.solver = cas.nlpsol('solver', 'ipopt', prob, opts)
+        opts = {'print_time':0, 'verbose':False}#, 'qpsol.printLevel': 'PL_NONE', 'qpoases.verbose':1, 'ipopt.max_iter': 300} 
+        prob = {'f': J, 'p': cas.vertcat(*[X0, Bis_target, U_prec_true]), 'x': cas.vertcat(*w), 'g': cas.vertcat(*(gu))} #+gbis
+        self.solver = cas.qpsol('solver', 'qpoases', prob, opts)
         
         
         
@@ -545,7 +547,7 @@ class MPC_lin:
         
         Hk = self.Output(Cep=Cep, Cer = Cer)
         bis = Hk['bis']
-        J = (bis - Bis_target)**2 #+ 0.1* (x[3] - Cep)**2 + 0.1* (x[7] - Cer)**2
+        J = self.Q *(bis - Bis_target)**2 #+ self.R[0,0] * (self.C50p - Cep)**2 + self.R[1,1] * (self.C50r - Cer)**2
         g = []
         ubg = []
         lbg = []
@@ -558,7 +560,9 @@ class MPC_lin:
         w_opt = sol['x'].full().flatten()
         self.Cep_target = w_opt[0]
         self.Cer_target = w_opt[1]
-        self.Bis_target_Ce = Bis_target
+        Hk = self.Output(Cep=self.Cep_target, Cer = self.Cer_target)
+        bis = Hk['bis']
+        self.Bis_target_Ce = bis
         
     def one_step(self, x : list, Bis_target : float, Bis_measure: float):
         """Compute the optimal commande to reach Bis_target value using propofol and remifentanil inputs
@@ -571,15 +575,13 @@ class MPC_lin:
             self.linearized_problem(x, Bis_target)
         
         w0 = []
-        for k in range(self.N):
-            if k < self.Nu-1:
-                w0  += self.U_prec[2*(k+1):2*(k+1)+2]
-            else:
-                w0  += self.U_prec[2*k:2*k+2]
-       
-        self.lbg_bis = [self.internal_target - self.dymin]*self.N
+        for k in range(self.Nu-1):
+            w0  += self.U_prec[2*(k+1):2*(k+1)+2]
+        w0+=self.U_prec[2*(self.Nu-1):2*(self.Nu-1)+2]
         
-        sol = self.solver(x0=w0, p=list(x) + [self.internal_target] + list(self.U_prec[0:2]), lbx=self.lbw, ubx=self.ubw, lbg=self.lbg_u + self.lbg_bis, ubg=self.ubg_u + self.ubg_bis)
+        self.lbg_bis = [self.internal_target - self.dymin]*self.N
+        w0 = [0]*self.Nu*2
+        sol = self.solver(x0=w0, p=list(x) + [self.internal_target] + list(self.U_prec[0:2]), lbx=self.lbw, ubx=self.ubw, lbg=self.lbg_u , ubg=self.ubg_u ) #+ self.ubg_bis + self.lbg_bis
         w_opt = sol['x'].full().flatten()
         
         #integrator
