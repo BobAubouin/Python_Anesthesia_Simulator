@@ -75,7 +75,7 @@ class PID():
 
 class NMPC:
     def __init__(self, A: list, B:list, BIS_param: list, ts: float = 1,
-                 N: int = 10, Nu: int = 10, Q:list = 10, R:list = np.diag([2,1]), 
+                 N: int = 10, Nu: int = 10, R:list = np.diag([2,1]), 
                  umax: list = [1e10]*2, umin: list = [0]*2,
                  dumax: list = [0.2, 0.4], dumin: list = [-0.2, -0.4],
                  ymax: float = 100, dymin: float = 0, ki: float = 0):
@@ -94,7 +94,6 @@ class NMPC:
         self.ymax = ymax
         self.dymin = dymin
         self.R = R #control cost
-        self.Q = Q #objective cost
         self.N = N #horizon
         self.Nu = Nu
         
@@ -160,7 +159,7 @@ class NMPC:
             Hk = self.Output(x=Xk)
             bis = Hk['bis']
             
-            J+= self.Q * ((bis - Bis_target)**2/100 + ((bis - Bis_target - 20)/30)**16) + (U-U_prec).T @ self.R @ (U-U_prec) #+ 
+            J+= ((bis - Bis_target)**2/100 + ((bis - Bis_target - 20)/30)**16) + (U-U_prec).T @ self.R @ (U-U_prec) #+ 
             #J+= self.Q * (bis - Bis_target)**2 + (U).T @ self.R @ (U)
             
             gu += [U-U_prec]

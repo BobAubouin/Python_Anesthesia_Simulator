@@ -78,7 +78,6 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
     #init controller
     N_mpc = MPC_param[0]
     Nu_mpc = MPC_param[1]
-    Q_mpc = MPC_param[2]
     R_mpc = MPC_param[3]
     ki_mpc = MPC_param[4]
     BIS_cible = 50
@@ -88,7 +87,7 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
     dur_max = 0.4*ts*100
     
     MPC_controller = NMPC(A_nom, B_nom, BIS_param = BIS_param_nominal, ts = ts, N = N_mpc, Nu = Nu_mpc,
-                          Q = Q_mpc, R = R_mpc, umax = [up_max, ur_max], dumax = [dup_max, dur_max], 
+                          R = R_mpc, umax = [up_max, ur_max], dumax = [dup_max, dur_max], 
                           dumin = [-dup_max, - dur_max], dymin = 0, ki = 0)
 
     # MPC_controller = MPC(A_nom, B_nom, BIS_param = BIS_param_nominal, ts = ts, N = N_mpc, Nu = Nu_mpc,
@@ -207,15 +206,15 @@ phase = 'induction'
 IAE_list = []
 TT_list = []
 ST10_list = []
-p1 = figure(plot_width=900, plot_height=300)
-p2 = figure(plot_width=900, plot_height=300)
-p3 = figure(plot_width=900, plot_height=300)
-p4 = figure(plot_width=500, plot_height=500)
+p1 = figure(width=900, height=300)
+p2 = figure(width=900, height=300)
+p3 = figure(width=900, height=300)
+p4 = figure(width=500, height=500)
 
 param_opti = pd.read_csv('optimal_parameters_MPC.csv')
 param_opti = [int(param_opti['N']), int(param_opti['Nu']), float(param_opti['R']), float(param_opti['ki'])]
 # param_opti = [20, 10,  2.6,  0.01]
-MPC_param = [param_opti[0], param_opti[1], 1, 10**param_opti[2]*np.diag([10,1]), param_opti[3]]
+MPC_param = [param_opti[0], param_opti[1], 10**param_opti[2]*np.diag([10,1]), param_opti[3]]
 t0 = time.time()
 for i in range(8,9):
     Patient_info = Patient_table[i-1][1:]
@@ -275,6 +274,7 @@ ST10_list = []
 ST20_list = []
 US_list = []
 BIS_NADIR_list = []
+
 p1 = figure(width=900, height=300)
 p2 = figure(width=900, height=300)
 p3 = figure(width=900, height=300)
@@ -289,7 +289,7 @@ def one_simu(x, i):
     gender = np.random.randint(low=0,high=1)
 
     Patient_info = [age, height, weight, gender] + [None]*6
-    iae, data, BIS_param = simu(Patient_info, 'induction', [int(x[0]), int(x[1]), 1, 10**(x[2])*np.diag([10,1]), x[3]],
+    iae, data, BIS_param = simu(Patient_info, 'induction', [int(x[0]), int(x[1]), 10**(x[2])*np.diag([10,1]), x[3]],
                                 random_PK = False, random_PD = True,)
     return [iae, data, BIS_param, i]   
 
