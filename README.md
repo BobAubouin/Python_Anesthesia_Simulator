@@ -24,7 +24,7 @@ Available soon in the _Documentation.pdf_ file.
 _GNU General Public License 3.0_
 
 ## Project status
-In dev, need to add all the models and to 
+In dev, BIS model ok, example on PID ok, working on MISO control
 
 ## Author
 Bob Aubouin--Paitault
