@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import multiprocessing
 from functools import partial
+from pyswarm import pso
 from filterpy.common import Q_continuous_white_noise
 from scipy.linalg import block_diag
 from bokeh.plotting import figure, show
@@ -29,7 +30,7 @@ from bokeh.models import HoverTool
 import matplotlib.pyplot as plt
 from bokeh.io import export_svg
 
-def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False, random_PD: bool = False):
+def simu(Patient_info: list,style: str, MPC_param: list, EKF_param: list, random_PK: bool = False, random_PD: bool = False):
     ''' This function perform a closed-loop Propofol-Remifentanil anesthesia simulation with a PID controller.
     
     Inputs: - Patient_info: list of patient informations, Patient_info = [Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax]
@@ -71,10 +72,10 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
     B_nom = block_diag(Bp,Br)
     
     #init state estimator
-    Q = Q_continuous_white_noise(4, spectral_density = 1, block_size = 2)
-    P0 = np.diag([10,10,10,10]*2)
+    Q = Q_continuous_white_noise(4, spectral_density = 10**EKF_param[0], block_size = 2)
+    P0 = np.diag([1]*8)*10**EKF_param[1]
     estimator = EKF(A_nom, B_nom, BIS_param = BIS_param_nominal, ts = ts,
-                    P0 = P0, R = 10, Q = Q)
+                    P0 = P0, R = 10**EKF_param[2], Q = Q)
 
     #init controller
     N_mpc = MPC_param[0]
@@ -176,6 +177,56 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
     IAE = np.sum(np.abs(BIS - BIS_cible))
     return IAE, [BIS, MAP, CO, Up, Ur, BIS_cible_MPC, Xp_EKF, Xr_EKF], George.BisPD.BIS_param
 
+#%% Optimize arameters
+#index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
+Patient_table = [[1,  40, 163, 54, 0, 4.73, 24.97,  2.97,  0.3 , 97.86, 89.62],
+                 [2,  36, 163, 50, 0, 4.43, 19.33,  2.04,  0.29, 89.1 , 98.86],
+                 [3,  28, 164, 52, 0, 4.81, 16.89,  1.18,  0.14, 93.66, 94.  ],
+                 [4,  50, 163, 83, 0, 3.86, 20.97,  1.08,  0.12, 94.6 , 93.2 ],
+                 [5,  28, 164, 60, 1, 5.22, 18.95,  2.43,  0.68, 97.43, 96.21],
+                 [6,  43, 163, 59, 0, 3.41, 23.26,  3.16,  0.58, 85.33, 97.07],
+                 [7,  37, 187, 75, 1, 4.83, 15.21,  2.94,  0.13, 91.87, 90.84],
+                 [8,  38, 174, 80, 0, 4.36, 13.86,  3.37,  1.05, 97.45, 96.36],
+                 [9,  41, 170, 70, 0, 4.57, 16.2 ,  1.55,  0.16, 85.83, 94.6 ],
+                 [10, 37, 167, 58, 0, 6.02, 23.47,  2.83,  0.77, 95.18, 88.17],
+                 [11, 42, 179, 78, 1, 3.79, 22.25,  2.35,  1.12, 98.02, 96.95],
+                 [12, 34, 172, 58, 0, 5.7 , 18.64,  2.67,  0.4 , 99.57, 96.94],
+                 [13, 38, 169, 65, 0, 4.64, 19.50,  2.38,  0.48, 93.82, 94.40]]
+param_opti = pd.read_csv('optimal_parameters_EKF.csv')
+EKF_param = [float(param_opti['Q']), float(param_opti['P0']), float(param_opti['R'])]
+
+
+def one_simu(x, i):
+    '''cost of one simulation, i is the patient index'''
+    Patient_info = Patient_table[i-1][1:]
+    iae, data, truc = simu(Patient_info, 'induction', [int(x[0]), int(x[1]), 1, 10**(x[2])*np.diag([10,1]), 2e-2], [0,1,x[3]])
+    return iae
+
+def cost(x):
+    '''cost of the optimization, x is the vector of the PID controller
+    x = [Kp, Ti, Td]
+    IAE is the maximum integrated absolut error over the patient population'''
+    if x[1]>x[0]:
+        return 100000
+    pool_obj = multiprocessing.Pool()
+    func = partial(one_simu, x)
+    IAE = pool_obj.map(func,range(0,13))
+    pool_obj.close()
+    pool_obj.join()
+
+    return max(IAE)
+
+try: 
+    param_opti = pd.read_csv('optimal_parameters_MPC_lin.csv')
+except:
+    param_opti = pd.DataFrame(columns=['N','Nu','R','ki'])
+    lb = [5, 5, 1, -1]
+    ub =[40,35,5, 5]
+    xopt, fopt = pso(cost, lb, ub, debug = True, minfunc = 5, swarmsize=40) #Default: 100 particles as in the article
+    param_opti = pd.concat((param_opti, pd.DataFrame({'N': xopt[0], 'Nu':xopt[1], 'R':xopt[2], 'ki':xopt[3], 'R_EKF': xopt[4]}, index=[0])), ignore_index=True)    
+    param_opti.to_csv('optimal_parameters_MPC_lin.csv')
+    
+    
 #%% Table simultation
 # #Patient table:
 # #index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
@@ -259,12 +310,15 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
 
 #Simulation parameter
 phase = 'induction'
-Number_of_patient = 500
+Number_of_patient = 16
 # MPC_param = [30, 30, 1, 10*np.diag([2,1]), 0.1]
 
 param_opti = pd.read_csv('optimal_parameters_MPC_lin.csv')
+EKF_param = [0, 1, float(param_opti['R_EKF'])]
 param_opti = [int(param_opti['N']), int(param_opti['Nu']), float(param_opti['R']), float(param_opti['ki'])]
 MPC_param = [param_opti[0], param_opti[1], 1, 10**param_opti[2]*np.diag([10,1]), param_opti[3]]
+
+
 
 IAE_list = []
 TT_list = []
@@ -287,7 +341,7 @@ def one_simu(x, i):
 
     Patient_info = [age, height, weight, gender] + [None]*6
     iae, data, BIS_param = simu(Patient_info, 'induction', [int(x[0]), int(x[1]), 1, 10**(x[2])*np.diag([10,1]), x[3]],
-                                random_PK = True, random_PD = True)
+                                EKF_param, random_PK = True, random_PD = True)
     return [iae, data, BIS_param, i]   
 
 param_opti = pd.read_csv('optimal_parameters_MPC_lin.csv')

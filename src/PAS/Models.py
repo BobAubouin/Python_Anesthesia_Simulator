@@ -371,7 +371,7 @@ class Bismodel:
             U_50 = 1 - self.beta * (Phi - Phi**2)
             i = (up + ur)/U_50
         bis = self.E0 - self.Emax * i ** self.gamma / (1 + i ** self.gamma)  
-        return max(0,bis)
+        return np.clip(bis, a_max = 100, a_min = 0)
 
     def inverse_hill(self, BIS: float, cer: float = 0):
         """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration"""
@@ -393,9 +393,9 @@ class Bismodel:
         fig.colorbar(surf, shrink=0.5, aspect=8)
         ax.view_init(12, -72)
         plt.show()
-        fig.tight_layout()
-        savepath = "/home/aubouinb/ownCloud/Anesthesie/Science/Bob/3D-Hill.pdf"
-        fig.savefig(savepath, bbox_inches='tight', format='pdf')
+        # fig.tight_layout()
+        # savepath = "/home/aubouinb/ownCloud/Anesthesie/Science/Bob/3D-Hill.pdf"
+        # fig.savefig(savepath, bbox_inches='tight', format='pdf')
 
 
 

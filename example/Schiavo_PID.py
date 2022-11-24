@@ -337,7 +337,7 @@ except:
 #Simulation parameter
 phase = 'induction'
 ratio = 2
-Number_of_patient = 500
+Number_of_patient = 32
 
 # Controller parameters
 Kp = float(param_opti.loc[param_opti['ratio']==ratio, 'Kp'])

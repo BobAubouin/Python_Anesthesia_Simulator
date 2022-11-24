@@ -78,8 +78,8 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
     #init controller
     N_mpc = MPC_param[0]
     Nu_mpc = MPC_param[1]
-    R_mpc = MPC_param[3]
-    ki_mpc = MPC_param[4]
+    R_mpc = MPC_param[2]
+    ki_mpc = MPC_param[3]
     BIS_cible = 50
     up_max = 6.67
     ur_max = 16.67
@@ -98,6 +98,7 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
     if style=='induction':
         N_simu = int(10/ts)*60
         BIS = np.zeros(N_simu)
+        BIS_Pred = np.zeros((N_simu,N_mpc))
         BIS_cible_MPC = np.zeros(N_simu)
         BIS_EKF = np.zeros(N_simu)
         MAP = np.zeros(N_simu)
@@ -131,7 +132,10 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
                 MPC_controller.ki = ki_mpc
                 BIS_cible = 50
             X = np.clip(X, a_min=0, a_max = 1e10)
-            uP, uR = MPC_controller.one_step(X, BIS_cible, BIS_EKF[i])
+            X_real = np.concatenate((Xp[:,i], Xr[:,i]), axis=0)
+            # X = X_real
+            uP, uR, bis = MPC_controller.one_step(X, BIS_cible, BIS_EKF[i])
+            BIS_Pred[i,:] = bis
             BIS_cible_MPC[i] = MPC_controller.internal_target
             
             
@@ -167,7 +171,8 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
             #estimation
             X, BIS_EKF[i] = estimator.estimate([uP, uR], BIS[i])
             Xp_EKF[:,i] =  X[:4]       
-            Xr_EKF[:,i] =  X[4:]        
+            Xr_EKF[:,i] =  X[4:]    
+            X_real = np.concatenate((Xp[:,i], Xr[:,i]), axis=0)
             uP, uR = MPC_controller.one_step(X, BIS_cible, BIS_EKF[i])
     
     error = BIS - BIS_cible
@@ -175,8 +180,20 @@ def simu(Patient_info: list,style: str, MPC_param: list, random_PK: bool = False
         if error[i]<0:
             error[i] = error[i]*2
     IAE = np.sum(np.abs(error))
-    
-    return IAE, [BIS, MAP, CO, Up, Ur, BIS_cible_MPC, Xp_EKF, Xr_EKF], George.BisPD.BIS_param
+    if True:
+        fig, ax = plt.subplots(2, 1)
+        ax[0].plot(np.arange(0,len(BIS))*5/60, BIS)
+        for i in range(N_simu):
+            ax[0].plot(np.arange(0, len(BIS_Pred[i,:]))*5/60 +(i+1)*5/60, BIS_Pred[i,:])
+        ax[0].grid()
+        ax[0].set_xlim(0,12)
+        
+        ax[1].plot(np.arange(0,len(BIS))*5/60, Up)
+        ax[1].plot(np.arange(0,len(BIS))*5/60, Ur)
+        ax[1].grid()
+        ax[1].set_xlim(0,12)
+        
+    return IAE, [BIS, MAP, CO, Up, Ur, BIS_cible_MPC, Xp_EKF, Xr_EKF, BIS_EKF], George.BisPD.BIS_param
 
 #%% Table simultation
 #Patient table:
@@ -215,6 +232,7 @@ param_opti = pd.read_csv('optimal_parameters_MPC.csv')
 param_opti = [int(param_opti['N']), int(param_opti['Nu']), float(param_opti['R']), float(param_opti['ki'])]
 # param_opti = [20, 10,  2.6,  0.01]
 MPC_param = [param_opti[0], param_opti[1], 10**param_opti[2]*np.diag([10,1]), param_opti[3]]
+MPC_param = [ 30, 30, 10**(1), 1e-2]
 t0 = time.time()
 for i in range(8,9):
     Patient_info = Patient_table[i-1][1:]
@@ -233,7 +251,8 @@ for i in range(8,9):
                 ('gamma',"@gamma"), ('beta',"@beta"),
                 ('E0',"@E0"), ('Emax',"@Emax")]
     p1.add_tools(HoverTool(renderers=[plot], tooltips=tooltips))
-    p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
+    p1.line(np.arange(0,len(data[0]))*5/60, data[8], legend_label='internal target', line_color="#f46d43")
+    # p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
     p2.line(np.arange(0,len(data[0]))*5/60, data[1], legend_label='MAP (mmgh)')
     p2.line(np.arange(0,len(data[0]))*5/60, data[2]*10, legend_label='CO (cL/min)', line_color="#f46d43")
     p3.line(np.arange(0,len(data[3]))*5/60, data[3], line_color="#006d43", legend_label='propofol (mg/min)')
@@ -296,7 +315,10 @@ def one_simu(x, i):
 param_opti = pd.read_csv('optimal_parameters_MPC.csv')
 x = param_opti.to_numpy()
 x = x[0,1:]
-x[3] = 2e-2
+x[0] = 30
+x[1] = 30
+x[2] = 1
+x[3] = 1e-2
 # x = [30,  30,  -6,  0]
 pool_obj = multiprocessing.Pool(8)
 func = partial(one_simu, x)
@@ -326,6 +348,7 @@ for i in range(Number_of_patient):
                 ('gamma',"@gamma"), ('beta',"@beta"),
                 ('E0',"@E0"), ('Emax',"@Emax")]
     p1.add_tools(HoverTool(renderers=[plot], tooltips=tooltips))
+    p1.line(np.arange(0,len(data[0]))*5/60, data[8], legend_label='internal target', line_color="#f46d43")
     # p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
     p2.line(np.arange(0,len(data[0]))*5/60, data[1], legend_label='MAP (mmgh)')
     p2.line(np.arange(0,len(data[0]))*5/60, data[2]*10, legend_label='CO (cL/min)', line_color="#f46d43")
