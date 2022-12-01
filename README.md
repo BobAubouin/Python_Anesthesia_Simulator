@@ -11,6 +11,8 @@ This repository includes the Python Anesthesia Simulator (PAS), used to perform 
     |
     ├── example            # example of controller test pipeline with the library 
     |   ├── ...
+    ├── our_idea 	    # our control idea with EKF and MPC
+    |   ├── ...
     ├── LICENSE
     ├── requirements.txt
     └── README.md
@@ -24,7 +26,7 @@ Available soon in the _Documentation.pdf_ file.
 _GNU General Public License 3.0_
 
 ## Project status
-In dev, BIS model ok, example on PID ok, working on MISO control
+In dev, PK model ok, PD-BIS model ok, example on PID ok, working on MISO control
 
 ## Author
 Bob Aubouin--Paitault

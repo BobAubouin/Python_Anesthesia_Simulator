@@ -17,10 +17,11 @@ path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 
 from src.PAS import Patient, disturbances, metrics
+from src.Control.Controller import PID
 
 import numpy as np
 import pandas as pd
-from Controller import PID
+
 from pyswarm import pso
 import casadi as cas
 from bokeh.plotting import figure, show
