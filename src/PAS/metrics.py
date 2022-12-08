@@ -58,5 +58,4 @@ def compute_control_metrics(Bis: list, Te: float = 1, phase: str = 'maintenance'
                 break   
         
         return TTp, BIS_NADIRp, TTn, BIS_NADIRn
-        
     
