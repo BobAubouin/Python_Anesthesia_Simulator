@@ -14,37 +14,23 @@ Created on Wed Dec  7 09:51:25 2022
 @author: aubouinb
 """
 
-
-# from src.Control.Estimators import linear_Kalman, EKF_extended, EKF
-# from src.Control.Controller import NMPC, MPC, MPC_lin
-# from src.PAS import Patient, disturbances, metrics
-# import os
-# import sys
-# path = os.getcwd()
-# path_root = path[:-9]
-# sys.path.append(str(path_root))
-
+import os
+import sys
+path = os.getcwd()
+path_root = path[:-9]
+sys.path.append(str(path_root))
+from src.Control.Estimators import EKF
+from src.Control.Controller import NMPC
+from src.PAS import Patient, disturbances
 
 
-
-from bokeh.io import export_svg
-import matplotlib.pyplot as plt
-from bokeh.models import HoverTool
-from bokeh.layouts import row, column
-from bokeh.plotting import figure, show
 from scipy.linalg import block_diag
 from filterpy.common import Q_continuous_white_noise
-from pyswarm import pso
-from functools import partial
 import multiprocessing
 import pandas as pd
 import numpy as np
-import time
-from Estimators import linear_Kalman, EKF_extended, EKF
-from Controller import NMPC, MPC, MPC_lin
-import Patient
-import disturbances
-import metrics
+
+
 def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
          random_PK: bool = False, random_PD: bool = False):
     ''' Simu function perform a closed-loop Propofol-Remifentanil anesthesia
@@ -83,7 +69,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
 
     # Nominal parameters
     George_nominal = Patient.Patient(
-        age, height, weight, gender, BIS_param=[None]*6, Te=ts)
+        age, height, weight, gender, BIS_param=[None] * 6, Te=ts)
     BIS_param_nominal = George_nominal.BisPD.BIS_param
     BIS_param_nominal[4] = George.BisPD.BIS_param[4]
 
@@ -94,7 +80,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     A_nom = block_diag(Ap, Ar)
     B_nom = block_diag(Bp, Br)
 
-    model_number = 3*3*3*2
+    model_number = 3 * 3 * 3 * 2
     std_Cep = 1.34 * 1.5
     std_Cer = 5.79 * 1.5
     std_gamma = 0.73 * 1.5
@@ -105,13 +91,13 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     BIS_param_grid[3] = BIS_param_nominal[3] - std_beta
     for m in range(2):
         BIS_param_grid[3] += std_beta
-        BIS_param_grid[0] = BIS_param_nominal[0] - 2*std_Cep
+        BIS_param_grid[0] = BIS_param_nominal[0] - 2 * std_Cep
         for i in range(3):
             BIS_param_grid[0] += std_Cep
-            BIS_param_grid[1] = BIS_param_nominal[1] - 2*std_Cer
+            BIS_param_grid[1] = BIS_param_nominal[1] - 2 * std_Cer
             for j in range(3):
                 BIS_param_grid[1] += std_Cer
-                BIS_param_grid[2] = BIS_param_nominal[2] + 2*std_gamma
+                BIS_param_grid[2] = BIS_param_nominal[2] + 2 * std_gamma
                 for k in range(3):
                     BIS_param_grid[2] -= std_gamma
                     BIS_param_grid[2] = max(1, BIS_param_grid[2])
@@ -120,7 +106,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     # State estimator parameters
     Q = Q_continuous_white_noise(
         4, spectral_density=10**EKF_param[0], block_size=2)
-    P0 = np.diag([1]*8)*10**EKF_param[1]
+    P0 = np.diag([1] * 8) * 10**EKF_param[1]
     Estimator_list = []
 
     # Controller parameters
@@ -131,8 +117,8 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     BIS_cible = 50
     up_max = 6.67
     ur_max = 13.67
-    dup_max = 0.2*ts * 100
-    dur_max = 0.4*ts * 100
+    dup_max = 0.2 * ts * 100
+    dur_max = 0.4 * ts * 100
 
     Controller_list = []
     for i in range(model_number):
@@ -147,7 +133,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
                                     dymin=0, ki=0))
 
     if style == 'induction':
-        N_simu = int(5/ts)*60
+        N_simu = int(5 / ts) * 60
         BIS = np.zeros(N_simu)
         BIS_cible_MPC = np.zeros(N_simu)
         BIS_EKF = np.zeros(N_simu)
@@ -158,15 +144,15 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
         best_model_id = np.zeros(N_simu)
         Xp = np.zeros((4, N_simu))
         Xr = np.zeros((4, N_simu))
-        Xp_EKF = np.zeros((4*model_number, N_simu))
-        Xr_EKF = np.zeros((4*model_number, N_simu))
+        Xp_EKF = np.zeros((4 * model_number, N_simu))
+        Xr_EKF = np.zeros((4 * model_number, N_simu))
         uP = 1e-3
         uR = 1e-3
         error = np.zeros(model_number)
         idx_best = 13
         for i in range(N_simu):
 
-            Dist = disturbances.compute_disturbances(i*ts, 'null')
+            Dist = disturbances.compute_disturbances(i * ts, 'null')
             Bis, Co, Map = George.one_step(uP, uR, Dist=Dist, noise=False)
             Xp[:, i] = George.PropoPK.x.T[0]
             Xr[:, i] = George.RemiPK.x.T[0]
@@ -174,7 +160,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
             BIS[i] = min(100, Bis)
             MAP[i] = Map[0, 0]
             CO[i] = Co[0, 0]
-            if i == N_simu-1:
+            if i == N_simu - 1:
                 break
             # estimation
             X_estimate_temp = np.zeros((8, model_number))
@@ -186,16 +172,16 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
                                                                                     uP,
                                                                                     uR],
                                                                                     BIS[i])
-                Xp_EKF[j*4:(j+1)*4, i] = X_estimate_temp[:4, j]
-                Xr_EKF[j*4:(j+1)*4, i] = X_estimate_temp[4:, j]
+                Xp_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[:4, j]
+                Xr_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[4:, j]
                 n_pred = 3
                 if i >= n_pred:
-                    x = np.concatenate(((Xp_EKF[j*4:(j+1)*4, i-n_pred],
-                                         Xr_EKF[j*4:(j+1)*4, i-n_pred])), axis=0)
+                    x = np.concatenate(((Xp_EKF[j * 4:(j + 1) * 4, i - n_pred],
+                                         Xr_EKF[j * 4:(j + 1) * 4, i - n_pred])), axis=0)
                     bis_pred = Estimator_list[j].predict_from_state(x=x,
-                                                                    up=Up[i-n_pred:i],
-                                                                    ur=Ur[i-n_pred:i])
-                    error[j] = np.sum(np.abs(bis_pred - BIS[i-n_pred:i+1]))
+                                                                    up=Up[i - n_pred:i],
+                                                                    ur=Ur[i - n_pred:i])
+                    error[j] = np.sum(np.abs(bis_pred - BIS[i - n_pred:i + 1]))
                 else:
                     error[j] = 0
 
@@ -286,17 +272,13 @@ ST20_list = []
 US_list = []
 BIS_NADIR_list = []
 
-p1 = figure(width=900, height=300)
-p2 = figure(width=900, height=300)
-p3 = figure(width=900, height=300)
-
-MPC_param = [20, 20, 10**(1.5)*np.diag([3, 1]), 1e-2]
+MPC_param = [20, 20, 10**(1.5) * np.diag([3, 1]), 1e-2]
 EKF_param = [1, 1, 1]
 phase = 'induction'
 
 
 def one_simu(i):
-    '''cost of one simulation, i is the patient index'''
+    """Cost of one simulation, i is the patient index."""
     # Generate random patient information with uniform distribution
     np.random.seed(i)
     age = np.random.randint(low=18, high=70)
@@ -304,7 +286,7 @@ def one_simu(i):
     weight = np.random.randint(low=50, high=100)
     gender = np.random.randint(low=0, high=1)
 
-    Patient_info = [age, height, weight, gender] + [None]*6
+    Patient_info = [age, height, weight, gender] + [None] * 6
     iae, data, BIS_param = simu(Patient_info, phase, MPC_param, EKF_param,
                                 random_PK=True, random_PD=True)
     return [iae, data, BIS_param, i]
@@ -322,7 +304,7 @@ for i in range(Number_of_patient):
 
     data = result[i][1]
     name = ['BIS', 'MAP', 'CO', 'Up', 'Ur']
-    dico = {str(i)+'_' + name[j]: data[j] for j in range(5)}
+    dico = {str(i) + '_' + name[j]: data[j] for j in range(5)}
     df = pd.concat([df, pd.DataFrame(dico)], axis=1)
 
-df.to_csv("result_multi_NMPC_n="+str(Number_of_patient)+'.csv')
+df.to_csv("result_multi_NMPC_n=" + str(Number_of_patient) + '.csv')
