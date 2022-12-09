@@ -93,7 +93,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, random_PK: bool = Fals
     #                       dumin = [-dup_max, - dur_max], ymin = 0, ki = 0)
 
     if style == 'induction':
-        N_simu = int(10/ts)*60
+        N_simu = int(5/ts)*60
         BIS = np.zeros(N_simu)
         BIS_Pred = np.zeros((N_simu, N_mpc))
         BIS_cible_MPC = np.zeros(N_simu)
@@ -232,7 +232,7 @@ p4 = figure(width=500, height=500)
 # # param_opti = [20, 10,  2.6,  0.01]
 # MPC_param = [param_opti[0], param_opti[1], 10 **
 #              param_opti[2]*np.diag([10, 1]), param_opti[3]]
-MPC_param = [30, 30, 10**(1.5)*np.diag([3, 1]), 1e-2]
+MPC_param = [20, 20, 10**(1.5)*np.diag([3, 1]), 1e-2]
 t0 = time.time()
 for i in range(1, 14):
     Patient_info = Patient_table[i-1][1:]

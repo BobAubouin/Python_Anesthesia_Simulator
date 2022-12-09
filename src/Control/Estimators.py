@@ -69,7 +69,7 @@ class EKF:
     def __init__(self, A: list, B: list, BIS_param: list, ts: float, x0: list = np.zeros((8, 1)),
                  Q: list = np.eye(8), R: list = np.array([1]), P0: list = np.eye(8)):
 
-        Ad, Bd = discretize(A, B, ts)
+        self.Ad, self.Bd = discretize(A, B, ts)
         self.BIS_param = BIS_param
         C50p = BIS_param[0]
         C50r = BIS_param[1]
@@ -92,8 +92,8 @@ class EKF:
         Pup = cas.MX.sym('P', 8, 8)   # P matrix
 
         # declare CASADI functions
-        xpred = cas.MX(Ad) @ x + cas.MX(Bd) @ u
-        Ppred = cas.MX(Ad) @ P @ cas.MX(Ad.T) + cas.MX(self.Q)
+        xpred = cas.MX(self.Ad) @ x + cas.MX(self.Bd) @ u
+        Ppred = cas.MX(self.Ad) @ P @ cas.MX(self.Ad.T) + cas.MX(self.Q)
         self.Pred = cas.Function('Pred', [x, u, P], [xpred, Ppred], [
                                  'x', 'u', 'P'], ['xpred', 'Ppred'])
 
@@ -104,6 +104,8 @@ class EKF:
         i = (up + ur)/U_50
 
         h_fun = E0 - Emax * i ** gamma / (1 + i ** gamma)
+        self.output = cas.Function('output', [x], [h_fun], ['x'], ['bis'])
+
         H = cas.gradient(h_fun, x).T
 
         S = H @ P @ H.T + cas.MX(self.R)
@@ -137,6 +139,19 @@ class EKF:
         self.Bis = BIS(self.x[3], self.x[7], self.BIS_param)
 
         return self.x, self.Bis
+
+    def predict_from_state(self, x: list, up: list, ur: list):
+        """Return the BIS prediction using the given initial state and the control input.
+        """
+        bis = self.output(x=x)
+        BIS_list = [float(bis['bis'])]
+        x = np.expand_dims(x, axis=1)
+        for i in range(len(up)):
+            u = np.array([[up[i]], [ur[i]]])
+            x = self.Ad @ x + self.Bd @ u
+            bis = self.output(x=x)
+            BIS_list.append(float(bis['bis']))
+        return np.array(BIS_list)
 
 
 class linear_Kalman:
