@@ -23,25 +23,26 @@ from src.Control.Controller import PID
 from src.PAS import Patient, disturbances, metrics
 from pathlib import Path
 import sys
+import time
 path_root = Path(__file__).parents[1]
 sys.path.append(str(path_root))
 
 
 # Patient table:
 #index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
-Patient_table = [[1,  40, 163, 54, 0, 4.73, 24.97,  1.08,  0.30, 97.86, 89.62],
-                 [2,  36, 163, 50, 0, 4.43, 19.33,  1.16,  0.29, 89.10, 98.86],
-                 [3,  28, 164, 52, 0, 4.81, 16.89,  1.54,  0.14, 93.66, 94.],
-                 [4,  50, 163, 83, 0, 3.86, 20.97,  1.37,  0.12, 94.60, 93.2],
-                 [5,  28, 164, 60, 1, 5.22, 18.95,  1.21,  0.68, 97.43, 96.21],
-                 [6,  43, 163, 59, 0, 3.41, 23.26,  1.34,  0.58, 85.33, 97.07],
-                 [7,  37, 187, 75, 1, 4.83, 15.21,  1.84,  0.13, 91.87, 90.84],
-                 [8,  38, 174, 80, 0, 4.36, 13.86,  2.23,  1.05, 97.45, 96.36],
-                 [9,  41, 170, 70, 0, 4.57, 16.20,  1.69,  0.16, 85.83, 94.6],
-                 [10, 37, 167, 58, 0, 6.02, 23.47,  1.27,  0.77, 95.18, 88.17],
-                 [11, 42, 179, 78, 1, 3.79, 22.25,  2.35,  1.12, 98.02, 96.95],
-                 [12, 34, 172, 58, 0, 5.70, 18.64,  2.02,  0.40, 99.57, 96.94],
-                 [13, 38, 169, 65, 0, 4.64, 19.50,  1.43,  0.48, 93.82, 94.40]]
+Patient_table = [[1, 40, 163, 54, 0, 4.73, 24.97, 1.08, 0.30, 97.86, 89.62],
+                 [2, 36, 163, 50, 0, 4.43, 19.33, 1.16, 0.29, 89.10, 98.86],
+                 [3, 28, 164, 52, 0, 4.81, 16.89, 1.54, 0.14, 93.66, 94.],
+                 [4, 50, 163, 83, 0, 3.86, 20.97, 1.37, 0.12, 94.60, 93.2],
+                 [5, 28, 164, 60, 1, 5.22, 18.95, 1.21, 0.68, 97.43, 96.21],
+                 [6, 43, 163, 59, 0, 3.41, 23.26, 1.34, 0.58, 85.33, 97.07],
+                 [7, 37, 187, 75, 1, 4.83, 15.21, 1.84, 0.13, 91.87, 90.84],
+                 [8, 38, 174, 80, 0, 4.36, 13.86, 2.23, 1.05, 97.45, 96.36],
+                 [9, 41, 170, 70, 0, 4.57, 16.20, 1.69, 0.16, 85.83, 94.6],
+                 [10, 37, 167, 58, 0, 6.02, 23.47, 1.27, 0.77, 95.18, 88.17],
+                 [11, 42, 179, 78, 1, 3.79, 22.25, 2.35, 1.12, 98.02, 96.95],
+                 [12, 34, 172, 58, 0, 5.70, 18.64, 2.02, 0.40, 99.57, 96.94],
+                 [13, 38, 169, 65, 0, 4.64, 19.50, 1.43, 0.48, 93.82, 94.40]]
 
 
 def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = False, random_PD: bool = False):
@@ -77,10 +78,10 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
     ur_max = 16.67
     ratio = PID_param[3]
     PID_controller = PID(Kp=PID_param[0], Ti=PID_param[1], Td=PID_param[2],
-                         N=5, Te=1, umax=max(up_max, ur_max/ratio), umin=0)
+                         N=5, Te=1, umax=max(up_max, ur_max / ratio), umin=0)
 
     if style == 'induction':
-        N_simu = 10*60
+        N_simu = 10 * 60
         BIS = np.zeros(N_simu)
         MAP = np.zeros(N_simu)
         CO = np.zeros(N_simu)
@@ -91,7 +92,7 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
             # if i == 100:
             #     print("break")
 
-            uR = min(ur_max, max(0, uP*ratio))
+            uR = min(ur_max, max(0, uP * ratio))
             uP = min(up_max, max(0, uP))
             Bis, Co, Map = George.one_step(uP, uR, noise=False)
             BIS[i] = Bis
@@ -101,7 +102,7 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
             Ur[i] = uR
             uP = PID_controller.one_step(Bis, BIS_cible)
     elif style == 'total':
-        N_simu = int(60/ts)*60
+        N_simu = int(60 / ts) * 60
         BIS = np.zeros(N_simu)
         MAP = np.zeros(N_simu)
         CO = np.zeros(N_simu)
@@ -111,9 +112,9 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
         for i in range(N_simu):
             # if i == 100:
             #     print("break")
-            uR = min(ur_max, max(0, uP*ratio))
+            uR = min(ur_max, max(0, uP * ratio))
             uP = min(up_max, max(0, uP))
-            Dist = disturbances.compute_disturbances(i*ts, 'realistic')
+            Dist = disturbances.compute_disturbances(i * ts, 'realistic')
             Bis, Co, Map = George.one_step(uP, uR, Dist=Dist, noise=False)
 
             BIS[i] = min(100, Bis)
@@ -124,7 +125,7 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
             uP = PID_controller.one_step(Bis, BIS_cible)
 
     elif style == 'maintenance':
-        N_simu = 25*60  # 25 minutes
+        N_simu = 25 * 60  # 25 minutes
         BIS = np.zeros(N_simu)
         MAP = np.zeros(N_simu)
         CO = np.zeros(N_simu)
@@ -145,28 +146,28 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
         Ar = np.array(George.RemiPK.A)
         Br = np.array(George.RemiPK.B)
 
-        x0p = np.linalg.solve(Ap, Bp*up_max/20)
-        x0r = np.linalg.solve(Ar, Br*up_max/10)
+        x0p = np.linalg.solve(Ap, Bp * up_max / 20)
+        x0r = np.linalg.solve(Ar, Br * up_max / 10)
         xp = cas.MX.sym('xp', 4)
         w0 += x0p[:, 0].tolist()
         xr = cas.MX.sym('xr', 4)
         w0 += x0r[:, 0].tolist()
         UP = cas.MX.sym('up', 1)
         w = [xp, xr, UP]
-        w0 += [up_max/2]
-        lbw = [1e-6]*9
-        ubw = [1e4]*9
+        w0 += [up_max / 2]
+        lbw = [1e-6] * 9
+        ubw = [1e4] * 9
 
         up = xp[3] / Ce50p
         ur = xr[3] / Ce50r
-        Phi = up/(up + ur)
+        Phi = up / (up + ur)
         U_50 = 1 - beta * (Phi - Phi**2)
-        i = (up + ur)/U_50
+        i = (up + ur) / U_50
         J = (50 - (E0 - Emax * i ** gamma / (1 + i ** gamma)))**2
 
-        g = [Ap @ xp + Bp * UP, Ar @ xr + Br * (ratio*UP)]
-        lbg = [-1e-8]*8
-        ubg = [1e-8]*8
+        g = [Ap @ xp + Bp * UP, Ar @ xr + Br * (ratio * UP)]
+        lbg = [-1e-8] * 8
+        ubg = [1e-8] * 8
 
         prob = {'f': J, 'x': cas.vertcat(*w), 'g': cas.vertcat(*g)}
         solver = cas.nlpsol('solver', 'ipopt', prob, {
@@ -181,10 +182,10 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
         George.Hemo.CeR = w_opt[7]
         uP = w_opt[-1]
         # initialize the PID at the equilibriium point
-        PID_controller.integral_part = uP/PID_controller.Kp
+        PID_controller.integral_part = uP / PID_controller.Kp
         PID_controller.last_BIS = 50
         for i in range(N_simu):
-            uR = min(ur_max, max(0, uP*ratio))
+            uR = min(ur_max, max(0, uP * ratio))
             uP = min(up_max, max(0, uP))
             Bis, Co, Map = George.one_step(uP, uR, noise=False)
             dist_bis, dist_map, dist_co = disturbances.compute_disturbances(i, 'step')
@@ -207,7 +208,7 @@ def cost(x, ratio):
     IAE is the maximum integrated absolut error over the patient population'''
     IAE = []
     for i in range(13):
-        Patient_info = Patient_table[i-1][1:]
+        Patient_info = Patient_table[i - 1][1:]
         iae, data = simu(Patient_info, 'induction', [x[0], x[1], x[2], ratio])
         IAE.append(iae)
     return max(IAE)
@@ -232,47 +233,47 @@ except:
 # %%test on patient table
 
 
-phase = 'induction'
+# phase = 'induction'
 
 
-IAE_list = []
-TT_list = []
-p1 = figure(width=900, height=300)
-p2 = figure(width=900, height=300)
-p3 = figure(width=900, height=300)
+# IAE_list = []
+# TT_list = []
+# p1 = figure(width=900, height=300)
+# p2 = figure(width=900, height=300)
+# p3 = figure(width=900, height=300)
 
-for ratio in range(2, 3):
-    print('ratio = ' + str(ratio))
-    Kp = float(param_opti.loc[param_opti['ratio'] == ratio, 'Kp'])
-    Ti = float(param_opti.loc[param_opti['ratio'] == ratio, 'Ti'])
-    Td = float(param_opti.loc[param_opti['ratio'] == ratio, 'Td'])
-    PID_param = [Kp, Ti, Td, ratio]
-    for i in range(1, 14):
-        Patient_info = Patient_table[i-1][1:]
-        IAE, data = simu(Patient_info, phase, PID_param)
-        p1.line(np.arange(0, len(data[0]))/60, data[0])
-        p2.line(np.arange(0, len(data[0]))/60, data[1], legend_label='MAP (mmgh)')
-        p2.line(np.arange(0, len(data[0]))/60, data[2]*10,
-                legend_label='CO (cL/min)', line_color="#f46d43")
-        p3.line(np.arange(0, len(data[3]))/60, data[3],
-                line_color="#006d43", legend_label='propofol (mg/min)')
-        p3.line(np.arange(0, len(data[4]))/60, data[4],
-                line_color="#f46d43", legend_label='remifentanil (ng/min)')
-        TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
-            data[0], Te=1, phase=phase)
-        TT_list.append(TT)
-        IAE_list.append(IAE)
-p1.title.text = 'BIS'
-p3.title.text = 'Infusion rates'
-p3.xaxis.axis_label = 'Time (min)'
-grid = row(column(p3, p1, p2))
+# for ratio in range(2, 3):
+#     print('ratio = ' + str(ratio))
+#     Kp = float(param_opti.loc[param_opti['ratio'] == ratio, 'Kp'])
+#     Ti = float(param_opti.loc[param_opti['ratio'] == ratio, 'Ti'])
+#     Td = float(param_opti.loc[param_opti['ratio'] == ratio, 'Td'])
+#     PID_param = [Kp, Ti, Td, ratio]
+#     for i in range(1, 14):
+#         Patient_info = Patient_table[i-1][1:]
+#         IAE, data = simu(Patient_info, phase, PID_param)
+#         p1.line(np.arange(0, len(data[0]))/60, data[0])
+#         p2.line(np.arange(0, len(data[0]))/60, data[1], legend_label='MAP (mmgh)')
+#         p2.line(np.arange(0, len(data[0]))/60, data[2]*10,
+#                 legend_label='CO (cL/min)', line_color="#f46d43")
+#         p3.line(np.arange(0, len(data[3]))/60, data[3],
+#                 line_color="#006d43", legend_label='propofol (mg/min)')
+#         p3.line(np.arange(0, len(data[4]))/60, data[4],
+#                 line_color="#f46d43", legend_label='remifentanil (ng/min)')
+#         TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
+#             data[0], Te=1, phase=phase)
+#         TT_list.append(TT)
+#         IAE_list.append(IAE)
+# p1.title.text = 'BIS'
+# p3.title.text = 'Infusion rates'
+# p3.xaxis.axis_label = 'Time (min)'
+# grid = row(column(p3, p1, p2))
 
-show(grid)
+# show(grid)
 
-print("Mean IAE : " + str(np.mean(IAE_list)))
-print("Mean TT : " + str(np.mean(TT_list)))
-print("Min TT : " + str(np.min(TT_list)))
-print("Max TT : " + str(np.max(TT_list)))
+# print("Mean IAE : " + str(np.mean(IAE_list)))
+# print("Mean TT : " + str(np.mean(TT_list)))
+# print("Min TT : " + str(np.min(TT_list)))
+# print("Max TT : " + str(np.max(TT_list)))
 
 # %% inter-patient variability test
 # Simulation parameter
@@ -339,7 +340,7 @@ print("Max TT : " + str(np.max(TT_list)))
 # Simulation parameter
 phase = 'induction'
 ratio = 2
-Number_of_patient = 32
+Number_of_patient = 128
 
 # Controller parameters
 Kp = float(param_opti.loc[param_opti['ratio'] == ratio, 'Kp'])
@@ -366,15 +367,15 @@ for i in range(Number_of_patient):
     weight = np.random.randint(low=50, high=100)
     gender = np.random.randint(low=0, high=1)
 
-    Patient_info = [age, height, weight, gender] + [None]*6
+    Patient_info = [age, height, weight, gender] + [None] * 6
     IAE, data = simu(Patient_info, phase, PID_param, random_PD=True, random_PK=True)
-    p1.line(np.arange(0, len(data[0]))/60, data[0])
-    p2.line(np.arange(0, len(data[0]))/60, data[1], legend_label='MAP (mmgh)')
-    p2.line(np.arange(0, len(data[0]))/60, data[2]*10,
+    p1.line(np.arange(0, len(data[0])) / 60, data[0])
+    p2.line(np.arange(0, len(data[0])) / 60, data[1], legend_label='MAP (mmgh)')
+    p2.line(np.arange(0, len(data[0])) / 60, data[2] * 10,
             legend_label='CO (cL/min)', line_color="#f46d43")
-    p3.line(np.arange(0, len(data[3]))/60, data[3],
+    p3.line(np.arange(0, len(data[3])) / 60, data[3],
             line_color="#006d43", legend_label='propofol (mg/min)')
-    p3.line(np.arange(0, len(data[4]))/60, data[4],
+    p3.line(np.arange(0, len(data[4])) / 60, data[4],
             line_color="#f46d43", legend_label='remifentanil (ng/min)')
     TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
         data[0], Te=1, phase=phase)

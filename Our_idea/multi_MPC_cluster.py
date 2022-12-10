@@ -29,6 +29,7 @@ from filterpy.common import Q_continuous_white_noise
 import multiprocessing
 import pandas as pd
 import numpy as np
+import time
 
 
 def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
@@ -251,7 +252,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
 
 # Simulation parameter
 phase = 'induction'
-Number_of_patient = 128
+Number_of_patient = 16
 # MPC_param = [30, 30, 1, 10*np.diag([2,1]), 0.1]
 
 # param_opti = pd.read_csv('optimal_parameters_MPC_lin.csv')
@@ -281,6 +282,7 @@ def one_simu(i):
     """Cost of one simulation, i is the patient index."""
     # Generate random patient information with uniform distribution
     np.random.seed(i)
+    print(i)
     age = np.random.randint(low=18, high=70)
     height = np.random.randint(low=150, high=190)
     weight = np.random.randint(low=50, high=100)
@@ -292,6 +294,7 @@ def one_simu(i):
     return [iae, data, BIS_param, i]
 
 
+t0 = time.time()
 pool_obj = multiprocessing.Pool(8)
 result = pool_obj.map(one_simu, range(0, Number_of_patient))
 pool_obj.close()
@@ -308,3 +311,6 @@ for i in range(Number_of_patient):
     df = pd.concat([df, pd.DataFrame(dico)], axis=1)
 
 df.to_csv("result_multi_NMPC_n=" + str(Number_of_patient) + '.csv')
+t1 = time.time()
+
+print(t1 - t0)
