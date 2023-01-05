@@ -12,7 +12,7 @@ def truncated_normal(mean=0, sd=1, low=0, upp=10):
 
 
 def Hill_function(x: float, x_50: float, gamma: float):
-    """simple Hill function"""
+    """Simple Hill function."""
     return x**gamma/(x_50**gamma + x**gamma)
 
 
@@ -34,14 +34,17 @@ def discretize(A: list, B: list, C: list, D: list, Te: float, method: str):
 
 
 class PKmodel:
-    """ This class modelize the PK model of propofol or remifentanil drug using Minto-Schnider or Eleveld model 
-    with compartiments model."""
+    """ PKmodel class modelize the PK model of propofol or remifentanil drug using Minto-Schnider or Eleveld model
+    with compartiments model.
+    """
 
     def __init__(self, age: float, height: float,
                  weight: float, sex: bool, lbm: float,
                  drug: str, Te: float = 1, model: str = 'Minto',
                  random: bool = False, x0: list = np.ones([4, 1])*1e-4):
-        """Input:
+        """Init the class.
+
+        Input:
             - age: float, in year
             - height:float, in cm
             - weight:float, in kg
@@ -49,10 +52,11 @@ class PKmodel:
             - lbm:float, lean body mass index
             - drug: string, either "Propofol" or "Remifentanil"
             - Te:float, sampling time, in s
-            - model: string could be "Minto", "Eleveld" for both drugs, "Marsh" and "Shuttler"" are also available for Propofol
+            - model: string could be "Minto", "Eleveld" for both drugs, "Marsh" and "Shuttler""
+              are also available for Propofol
             - random: bool to introduce uncertainties in the model
             - x0: numpy vector(4x1), initial concentration of the compartement model
-            """
+        """
         self.Te = Te
 
         self.sigma = None
@@ -89,7 +93,8 @@ class PKmodel:
                 cv_ke = ke0*0.42  # The real value seems to be not available in the article
 
             elif model == 'Marsh':
-                # see B. Marsh, M. White, N. morton, and G. N. C. Kenny, “Pharmacokinetic model Driven Infusion of Propofol in Children,”
+                # see B. Marsh, M. White, N. morton, and G. N. C. Kenny,
+                # “Pharmacokinetic model Driven Infusion of Propofol in Children,”
                 # BJA: British Journal of Anaesthesia, vol. 67, no. 1, pp. 41–48, Jul. 1991, doi: 10.1093/bja/67.1.41.
 
                 self.v1 = 0.228 * weight
@@ -138,8 +143,8 @@ class PKmodel:
 
             elif model == 'Eleveld':
                 # see D. J. Eleveld, P. Colin, A. R. Absalom, and M. M. R. F. Struys,
-                # “Pharmacokinetic–pharmacodynamic model for propofol for broad application in anaesthesia and sedation,”
-                # British Journal of Anaesthesia, vol. 120, no. 5, pp. 942–959, mai 2018, doi: 10.1016/j.bja.2018.01.018.
+                # “Pharmacokinetic–pharmacodynamic model for propofol for broad application in anaesthesia and sedation”
+                # British Journal of Anaesthesia, vol. 120, no. 5, pp. 942–959, mai 2018, doi:10.1016/j.bja.2018.01.018.
 
                 # function used in the model
                 def faging(x): return np.exp(x * (age - 35))
@@ -163,7 +168,7 @@ class PKmodel:
                         1.11 + (1 - 1.11)/(1+(ageX/7.1)**(-1.1)))*(9270*weightX)/(8780+244*bmiX)
 
                 self.v1 = 6.28 * fcentral(weight)/fcentral(35)
-                #self.v1 = self.v1 * (1 + 1.42 * (1 - fcentral(weight)))
+                # self.v1 = self.v1 * (1 + 1.42 * (1 - fcentral(weight)))
                 v2 = 25.5 * weight/70 * faging(-0.0156)
                 v2ref = 25.5
                 v3 = 273 * fal_sallami(weight, age, BMI) / \
@@ -172,7 +177,7 @@ class PKmodel:
                 cl1 = (sex*1.79 + (1-sex)*2.1) * (weight/70)**0.75 * \
                     fCLmat/fsig(35*52+40, 42.3, 9.06) * fopiate(-0.00286)
                 cl2 = 1.75*(v2/v2ref)**0.75 * (1 + 1.30 * (1 - fQ3mat))
-                #cl2 = cl2*0.68
+                # cl2 = cl2*0.68
                 cl3 = 1.11 * (v3/v3ref)**0.75 * fQ3mat/fsig(35*52+40, 68.3, 1)
 
                 ke0 = 0.146*(weight/70)**(-0.25)
@@ -281,10 +286,10 @@ class PKmodel:
         self.D = 0
 
         # Introduce inter-patient variability
-        if random == True:
+        if random is True:
             if model == 'Marsh':
-                print(
-                    "Warning: the standard deviation of the Marsh model are not know, it is set to 100% for each variable")
+                print("Warning: the standard deviation of the Marsh model are not know," +
+                      " it is set to 100% for each variable")
 
             self.v1 = truncated_normal(mean=self.v1, sd=cv_v1,
                                        low=self.v1/4, upp=self.v1*4)
@@ -315,13 +320,16 @@ class PKmodel:
         self.y = np.dot(self.C, self.x)
 
     def one_step(self, u: float):
-        """Simulate on step of PK model with infusion rate u (mg/s) and return the actual blood and effect site concentration (mg/L)"""
+        """Simulate on step of PK model with infusion rate u (mg/s).
+
+        return the actual blood and effect site concentration (mg/L)
+        """
         self.x = np.dot(self.A_d, self.x) + np.dot(self.B_d, u)
         self.y = np.dot(self.C_d, self.x) + np.dot(self.D_d, u)
         return self.y
 
     def update_coeff_CO(self, CO: float, CO_init: float = 6.5):
-        """Update PK coefficient with a linear function of Cardiac output value"""
+        """Update PK coefficient with a linear function of Cardiac output value."""
         coeff = 1
         Anew = copy.deepcopy(self.A)
         Anew[0][0] += coeff * Anew[0][0] * (CO - CO_init) / CO_init

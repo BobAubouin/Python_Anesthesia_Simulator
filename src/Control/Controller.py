@@ -52,9 +52,9 @@ class PID():
         self.derivative_part = 0
         self.last_BIS = 100
 
-    def one_step(self, BIS: float, Bis_cible: float):
+    def one_step(self, BIS: float, Bis_target: float):
         """Compute the next command for the PID controller."""
-        error = -(Bis_cible - BIS)
+        error = -(Bis_target - BIS)
         self.integral_part += self.Te / self.Ti * error
 
         self.derivative_part = (self.derivative_part * self.Td / self.N +
@@ -95,6 +95,8 @@ class NMPC:
 
         self.umax = umax
         self.umin = umin
+        self.dumin = dumin
+        self.dumax = dumax
         self.ymax = ymax
         self.dymin = dymin
         self.R = R  # control cost
@@ -171,8 +173,8 @@ class NMPC:
             # J += ((bis - Bis_target)**2/100 + ((bis - Bis_target - 30)/30)**32) + Ju
 
             J += (bis - Bis_target)**2 + (U).T @ self.R @ (U)
-            if k == self.N-1:
-                J += ((bis - Bis_target)**2/100 + ((bis - Bis_target - 30)/30)**32) * 1e3
+            # if k == self.N-1:
+            #     J += ((bis - Bis_target)**2/100 + ((bis - Bis_target - 30)/30)**32) * 1e3
 
             gu += [U-U_prec]
             gbis += [bis]
@@ -241,6 +243,87 @@ class NMPC:
             plt.show()
 
         return Up[0], Ur[0], bis
+
+    def update_model(self, new_BIS_param: list):
+        """Update the model used in the NMPC Controller."""
+        C50p = new_BIS_param[0]
+        C50r = new_BIS_param[1]
+        gamma = new_BIS_param[2]
+        beta = new_BIS_param[3]
+        E0 = new_BIS_param[4]
+        Emax = new_BIS_param[5]
+
+        # declare CASADI variables
+        x = cas.MX.sym('x', 8)  # x1p, x2p, x3p, xep, x1r, x2r, x3r, xer [mg/ml]
+
+        up = x[3] / C50p
+        ur = x[7] / C50r
+        Phi = up/(up + ur + 1e-6)
+        U_50 = 1 - beta * (Phi - Phi**2)
+        i = (up + ur)/U_50
+
+        bis = E0 - Emax * i ** gamma / (1 + i ** gamma)
+
+        self.Output = cas.Function('Output', [x], [bis], ['x'], ['bis'])
+
+        # Optimization problem definition
+        w = []
+        self.lbw = []
+        self.ubw = []
+        J = 0
+        gu = []
+        gbis = []
+        self.lbg_u = []
+        self.ubg_u = []
+        self.lbg_bis = []
+        self.ubg_bis = []
+
+        X0 = cas.MX.sym('X0', 8)
+        Bis_target = cas.MX.sym('Bis_target')
+        U_prec_true = cas.MX.sym('U_prec', 2)
+        Xk = X0
+        for k in range(self.N):
+            if k <= self.Nu-1:
+                U = cas.MX.sym('U', 2)
+                w += [U]
+                self.lbw += self.umin
+                self.ubw += self.umax
+            if k == 0:
+                Pred = self.Pred(x=X0, u=U)
+                U_prec = U_prec_true
+            elif k > self.Nu-1:
+                Pred = self.Pred(x=Xk, u=U)
+                U_prec = U
+            else:
+                Pred = self.Pred(x=Xk, u=U)
+                U_prec = w[-2]
+
+            Xk = Pred['x+']
+            Hk = self.Output(x=Xk)
+            bis = Hk['bis']
+
+            # J+= ((bis - Bis_target)**2/100 + ((bis - Bis_target - 25)/30)**8)
+            #    + (U-U_prec).T @ self.R @ (U-U_prec)
+
+            # Ju = ((U-U_prec).T @ self.R @ (U-U_prec)/100 +
+            #       (((U-U_prec).T @ self.R @ (U-U_prec)+10)/10)**4)
+
+            # J += ((bis - Bis_target)**2/100 + ((bis - Bis_target - 30)/30)**32) + Ju
+
+            J += (bis - Bis_target)**2 + (U).T @ self.R @ (U)
+            # if k == self.N-1:
+            #     J += ((bis - Bis_target)**2/100 + ((bis - Bis_target - 30)/30)**32) * 1e3
+
+            gu += [U-U_prec]
+            gbis += [bis]
+            self.lbg_u += self.dumin
+            self.ubg_u += self.dumax
+            self.ubg_bis += [self.ymax]
+
+        opts = {'ipopt.print_level': 1, 'print_time': 0, 'ipopt.max_iter': 300}
+        prob = {'f': J, 'p': cas.vertcat(*[X0, Bis_target, U_prec_true]),
+                'x': cas.vertcat(*w), 'g': cas.vertcat(*(gu))}  # +gbis
+        self.solver = cas.nlpsol('solver', 'ipopt', prob, opts)
 
 
 class MPC:

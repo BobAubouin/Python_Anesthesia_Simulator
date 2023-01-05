@@ -25,19 +25,15 @@ from Controller import NMPC, MPC, MPC_lin
 import Patient
 import disturbances
 import metrics
-# from src.Control.Estimators import linear_Kalman, EKF_extended, EKF
-# from src.Control.Controller import NMPC, MPC, MPC_lin
-# from src.PAS import Patient, disturbances, metrics
-# import os
-# import sys
-# path = os.getcwd()
-# path_root = path[:-9]
-# sys.path.append(str(path_root))
+from src.Control.Estimators import linear_Kalman, EKF_extended, EKF
+from src.Control.Controller import NMPC, MPC, MPC_lin
+from src.PAS import Patient, disturbances, metrics
 
 
 def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
          random_PK: bool = False, random_PD: bool = False):
-    ''' Simu function perform a closed-loop Propofol-Remifentanil anesthesia
+    """Simu function perform a closed-loop Propofol-Remifentanil anesthesia.
+
         simulation with a PID controller,
 
     Inputs: - Patient_info: list of patient informations,
@@ -52,7 +48,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     Outputs:- IAE: Integrated Absolute Error, performance index of the function
             - data: list of the signals during the simulation
                     data = [BIS, MAP, CO, up, ur].
-    '''
+    """
     age = Patient_info[0]
     height = Patient_info[1]
     weight = Patient_info[2]
@@ -64,7 +60,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     E0 = Patient_info[8]
     Emax = Patient_info[9]
 
-    ts = 5
+    ts = 2
 
     BIS_param = [Ce50p, Ce50r, gamma, beta, E0, Emax]
     George = Patient.Patient(age, height, weight, gender, BIS_param=BIS_param,
@@ -73,9 +69,10 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
 
     # Nominal parameters
     George_nominal = Patient.Patient(
-        age, height, weight, gender, BIS_param=[None]*6, Te=ts)
+        age, height, weight, gender, BIS_param=[None] * 6, Te=ts)
     BIS_param_nominal = George_nominal.BisPD.BIS_param
     BIS_param_nominal[4] = George.BisPD.BIS_param[4]
+    # BIS_param_nominal[5] = George.BisPD.BIS_param[5]
 
     Ap = George_nominal.PropoPK.A
     Ar = George_nominal.RemiPK.A
@@ -84,7 +81,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     A_nom = block_diag(Ap, Ar)
     B_nom = block_diag(Bp, Br)
 
-    model_number = 3*3*3*2
+    model_number = 3 * 3 * 3 * 2
     std_Cep = 1.34 * 1.5
     std_Cer = 5.79 * 1.5
     std_gamma = 0.73 * 1.5
@@ -95,13 +92,13 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     BIS_param_grid[3] = BIS_param_nominal[3] - std_beta
     for m in range(2):
         BIS_param_grid[3] += std_beta
-        BIS_param_grid[0] = BIS_param_nominal[0] - 2*std_Cep
+        BIS_param_grid[0] = BIS_param_nominal[0] - 2 * std_Cep
         for i in range(3):
             BIS_param_grid[0] += std_Cep
-            BIS_param_grid[1] = BIS_param_nominal[1] - 2*std_Cer
+            BIS_param_grid[1] = BIS_param_nominal[1] - 2 * std_Cer
             for j in range(3):
                 BIS_param_grid[1] += std_Cer
-                BIS_param_grid[2] = BIS_param_nominal[2] + 2*std_gamma
+                BIS_param_grid[2] = BIS_param_nominal[2] + 2 * std_gamma
                 for k in range(3):
                     BIS_param_grid[2] -= std_gamma
                     BIS_param_grid[2] = max(1, BIS_param_grid[2])
@@ -110,7 +107,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     # State estimator parameters
     Q = Q_continuous_white_noise(
         4, spectral_density=10**EKF_param[0], block_size=2)
-    P0 = np.diag([1]*8)*10**EKF_param[1]
+    P0 = np.diag([1] * 8) * 10**EKF_param[1]
     Estimator_list = []
 
     # Controller parameters
@@ -121,8 +118,8 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     BIS_cible = 50
     up_max = 6.67
     ur_max = 13.67
-    dup_max = 0.2*ts * 100
-    dur_max = 0.4*ts * 100
+    dup_max = 0.2 * ts * 100
+    dur_max = 0.4 * ts * 100
 
     Controller_list = []
     for i in range(model_number):
@@ -137,7 +134,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
                                     dymin=0, ki=0))
 
     if style == 'induction':
-        N_simu = int(5/ts)*60
+        N_simu = int(10 / ts) * 60
         BIS = np.zeros(N_simu)
         BIS_cible_MPC = np.zeros(N_simu)
         BIS_EKF = np.zeros(N_simu)
@@ -148,15 +145,17 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
         best_model_id = np.zeros(N_simu)
         Xp = np.zeros((4, N_simu))
         Xr = np.zeros((4, N_simu))
-        Xp_EKF = np.zeros((4*model_number, N_simu))
-        Xr_EKF = np.zeros((4*model_number, N_simu))
+        Xp_EKF = np.zeros((4 * model_number, N_simu))
+        Xr_EKF = np.zeros((4 * model_number, N_simu))
         uP = 1e-3
         uR = 1e-3
         error = np.zeros(model_number)
         idx_best = 13
+        n_pred = 5
+        epsilon_hysteresis = 1
         for i in range(N_simu):
 
-            Dist = disturbances.compute_disturbances(i*ts, 'null')
+            Dist = disturbances.compute_disturbances(i * ts, 'null')
             Bis, Co, Map = George.one_step(uP, uR, Dist=Dist, noise=False)
             Xp[:, i] = George.PropoPK.x.T[0]
             Xr[:, i] = George.RemiPK.x.T[0]
@@ -164,7 +163,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
             BIS[i] = min(100, Bis)
             MAP[i] = Map[0, 0]
             CO[i] = Co[0, 0]
-            if i == N_simu-1:
+            if i == N_simu - 1:
                 break
             # estimation
             X_estimate_temp = np.zeros((8, model_number))
@@ -172,20 +171,20 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
             Up_temp = np.zeros(model_number)
             Ur_temp = np.zeros(model_number)
             for j in range(model_number):
-                X_estimate_temp[:, j], BIS_EKF_temp[j] = Estimator_list[j].estimate([
-                                                                                    uP,
-                                                                                    uR],
-                                                                                    BIS[i])
-                Xp_EKF[j*4:(j+1)*4, i] = X_estimate_temp[:4, j]
-                Xr_EKF[j*4:(j+1)*4, i] = X_estimate_temp[4:, j]
-                n_pred = 3
+                (X_estimate_temp[:, j],
+                 BIS_EKF_temp[j]) = Estimator_list[j].estimate([uP, uR], BIS[i])
+
+                Xp_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[:4, j]
+                Xr_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[4:, j]
+
                 if i >= n_pred:
-                    x = np.concatenate(((Xp_EKF[j*4:(j+1)*4, i-n_pred],
-                                         Xr_EKF[j*4:(j+1)*4, i-n_pred])), axis=0)
+
+                    x = np.concatenate(((Xp_EKF[j * 4:(j + 1) * 4, i - n_pred],
+                                         Xr_EKF[j * 4:(j + 1) * 4, i - n_pred])), axis=0)
                     bis_pred = Estimator_list[j].predict_from_state(x=x,
-                                                                    up=Up[i-n_pred:i],
-                                                                    ur=Ur[i-n_pred:i])
-                    error[j] = np.sum(np.abs(bis_pred - BIS[i-n_pred:i+1]))
+                                                                    up=Up[i - n_pred:i],
+                                                                    ur=Ur[i - n_pred:i])
+                    error[j] = np.sum(np.abs(bis_pred - BIS[i - n_pred:i + 1]))
                 else:
                     error[j] = 0
 
@@ -195,56 +194,121 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
 
                 X_estimate_temp[:, j] = np.clip(
                     X_estimate_temp[:, j], a_min=0, a_max=1e10)
-                Up_temp[j], Ur_temp[j], b = Controller_list[j].one_step(
-                    X_estimate_temp[:, j], BIS_cible, BIS_EKF_temp[j])
+
             BIS_cible_MPC[i] = Controller_list[0].internal_target
             error_min = min(error)
             idx_best_list = [i for i, j in enumerate(error) if j == error_min]
             idx_best_new = idx_best_list[0]
-            if abs(error[idx_best_new] - error[idx_best]) > 5:
+            if abs(error[idx_best_new] - error[idx_best]) > epsilon_hysteresis:
                 idx_best = idx_best_new
-            uP = Up_temp[idx_best]
-            uR = Ur_temp[idx_best]
+
+            Controller_list[idx_best].U_prec[0:2] = [uP, uR]
+            uP, uR, b = Controller_list[idx_best].one_step(
+                X_estimate_temp[:, idx_best], BIS_cible, BIS_EKF_temp[idx_best])
+            # for j in range(model_number):
+            #     if j != idx_best:
+            #         if Controller_list[j].internal_target is None:
+            #             Controller_list[j].internal_target = BIS_cible
+            #         Controller_list[j].internal_target += Controller_list[j].ki * \
+            #             (BIS_cible - BIS_EKF_temp[j])
+
             Up[i] = uP
             Ur[i] = uR
             best_model_id[i] = idx_best
 
-    # elif style == 'total':
-    #     N_simu = int(20/ts)*60
-    #     BIS = np.zeros(N_simu)
-    #     BIS_cible_MPC = np.zeros(N_simu)
-    #     BIS_EKF = np.zeros(N_simu)
-    #     MAP = np.zeros(N_simu)
-    #     CO = np.zeros(N_simu)
-    #     Up = np.zeros(N_simu)
-    #     Ur = np.zeros(N_simu)
-    #     Xp = np.zeros((4, N_simu))
-    #     Xr = np.zeros((4, N_simu))
-    #     Xp_EKF = np.zeros((4, N_simu))
-    #     Xr_EKF = np.zeros((4, N_simu))
-    #     L = np.zeros(N_simu)
-    #     uP = 1
-    #     uR = 1
-    #     for i in range(N_simu):
-    #         # if i == 100:
-    #         #     print("break")
+            if i >= n_pred:
+                n_pred += 1
+                n_pred = min(n_pred, 30)
+                epsilon_hysteresis = n_pred * 3
 
-    #         Dist = disturbances.compute_disturbances(i*ts, 'step')
-    #         Bis, Co, Map = George.one_step(uP, uR, Dist=Dist, noise=False)
-    #         Xp[:, i] = George.PropoPK.x.T[0]
-    #         Xr[:, i] = George.RemiPK.x.T[0]
+    elif style == 'total':
+        N_simu = int(30 / ts) * 60
+        BIS = np.zeros(N_simu)
+        BIS_cible_MPC = np.zeros(N_simu)
+        BIS_EKF = np.zeros(N_simu)
+        MAP = np.zeros(N_simu)
+        CO = np.zeros(N_simu)
+        Up = np.zeros(N_simu)
+        Ur = np.zeros(N_simu)
+        best_model_id = np.zeros(N_simu)
+        Xp = np.zeros((4, N_simu))
+        Xr = np.zeros((4, N_simu))
+        Xp_EKF = np.zeros((4 * model_number, N_simu))
+        Xr_EKF = np.zeros((4 * model_number, N_simu))
+        uP = 1e-3
+        uR = 1e-3
+        error = np.zeros(model_number)
+        idx_best = 13
+        n_pred = 5
+        epsilon_hysteresis = 1
+        for i in range(N_simu):
 
-    #         BIS[i] = min(100, Bis)
-    #         MAP[i] = Map[0, 0]
-    #         CO[i] = Co[0, 0]
-    #         Up[i] = uP
-    #         Ur[i] = uR
-    #         # estimation
-    #         X, BIS_EKF[i] = estimator.estimate([uP, uR], BIS[i])
-    #         Xp_EKF[:, i] = X[:4]
-    #         Xr_EKF[:, i] = X[4:]
-    #         uP, uR = MPC_controller.one_step(X, BIS_cible, BIS_EKF[i])
-    #         BIS_cible_MPC[i] = MPC_controller.internal_target
+            Dist = disturbances.compute_disturbances(i * ts, 'step')
+            Bis, Co, Map = George.one_step(uP, uR, Dist=Dist, noise=False)
+            Xp[:, i] = George.PropoPK.x.T[0]
+            Xr[:, i] = George.RemiPK.x.T[0]
+
+            BIS[i] = min(100, Bis)
+            MAP[i] = Map[0, 0]
+            CO[i] = Co[0, 0]
+            if i == N_simu - 1:
+                break
+            # estimation
+            X_estimate_temp = np.zeros((8, model_number))
+            BIS_EKF_temp = np.zeros(model_number)
+            Up_temp = np.zeros(model_number)
+            Ur_temp = np.zeros(model_number)
+            for j in range(model_number):
+                (X_estimate_temp[:, j],
+                 BIS_EKF_temp[j]) = Estimator_list[j].estimate([uP, uR], BIS[i])
+
+                Xp_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[:4, j]
+                Xr_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[4:, j]
+
+                if i >= n_pred:
+
+                    x = np.concatenate(((Xp_EKF[j * 4:(j + 1) * 4, i - n_pred],
+                                         Xr_EKF[j * 4:(j + 1) * 4, i - n_pred])), axis=0)
+                    bis_pred = Estimator_list[j].predict_from_state(x=x,
+                                                                    up=Up[i - n_pred:i],
+                                                                    ur=Ur[i - n_pred:i])
+                    error[j] = np.sum(np.abs(bis_pred - BIS[i - n_pred:i + 1]))
+                else:
+                    error[j] = 0
+
+                # X_MPC = np.concatenate((Xp[:,i],Xr[:,i]),axis = 0)
+                if i == 20:  # or (BIS_EKF[i]<50 and MPC_controller.ki==0):
+                    Controller_list[j].ki = ki_mpc
+
+                X_estimate_temp[:, j] = np.clip(
+                    X_estimate_temp[:, j], a_min=0, a_max=1e10)
+
+            BIS_cible_MPC[i] = Controller_list[0].internal_target
+            error_min = min(error)
+            if i*ts < 5*60:
+                idx_best_list = [i for i, j in enumerate(error) if j == error_min]
+                idx_best_new = idx_best_list[0]
+                if abs(error[idx_best_new] - error[idx_best]) > epsilon_hysteresis:
+                    idx_best = idx_best_new
+
+            Controller_list[idx_best].U_prec[0:2] = [uP, uR]
+            uP, uR, b = Controller_list[idx_best].one_step(
+                X_estimate_temp[:, idx_best], BIS_cible, BIS_EKF_temp[idx_best])
+            # for j in range(model_number):
+            #     if j != idx_best:
+            #         if Controller_list[j].internal_target is None:
+            #             Controller_list[j].internal_target = BIS_cible
+            #         Controller_list[j].internal_target += Controller_list[j].ki * \
+            #             (BIS_cible - BIS_EKF_temp[j])
+
+            Up[i] = uP
+            Ur[i] = uR
+            best_model_id[i] = idx_best
+
+            if i >= n_pred:
+                n_pred += 1
+                n_pred = min(n_pred, 30)
+                epsilon_hysteresis = n_pred * 3
 
     IAE = np.sum(np.abs(BIS - BIS_cible))
     return(IAE, [BIS, MAP, CO, Up, Ur, BIS_cible_MPC, Xp_EKF, Xr_EKF, best_model_id],
@@ -319,19 +383,12 @@ Patient_table = [[1,  40, 163, 54, 0, 4.73, 24.97,  1.08,  0.30, 97.86, 89.62],
                  [13, 38, 169, 65, 0, 4.64, 19.50,  1.43,  0.48, 93.82, 94.40]]
 
 # Simulation parameters
-phase = 'induction'
 
-IAE_list = []
-TT_list = []
-ST10_list = []
-p1 = figure(width=900, height=300)
-p2 = figure(width=900, height=300)
-p3 = figure(width=900, height=300)
-p4 = figure(width=900, height=300)
 
 MPC_param = [20, 20, 10**(1.5)*np.diag([3, 1]), 1e-2]
 EKF_param = [1, 1, 1]
-phase = 'induction'
+phase = 'total'
+ts = 2
 
 
 def one_simu(i):
@@ -344,12 +401,21 @@ def one_simu(i):
     return [IAE, data, BIS_param, i]
 
 
+t0 = time.time()
 pool_obj = multiprocessing.Pool(8)
 result = pool_obj.map(one_simu, range(1, 14))
 pool_obj.close()
 pool_obj.join()
+t1 = time.time()
+print('one_step time: ' + str((t1-t0)*8/(len(result[0][1][0])*13)))
 
-t0 = time.time()
+IAE_list = []
+TT_list = []
+ST10_list = []
+p1 = figure(width=900, height=300)
+p2 = figure(width=900, height=300)
+p3 = figure(width=900, height=300)
+p4 = figure(width=900, height=300)
 for i in range(13):
     print(i)
     IAE = result[i][0]
@@ -358,7 +424,7 @@ for i in range(13):
     # Patient_info = Patient_table[i][1:]
     # IAE, data, BIS_param = simu(Patient_info, phase, MPC_param, EKF_param)
     source = pd.DataFrame(data=data[0], columns=['BIS'])
-    source.insert(len(source.columns), "time", np.arange(0, len(data[0]))*5/60)
+    source.insert(len(source.columns), "time", np.arange(0, len(data[0]))*ts/60)
     source.insert(len(source.columns), "Ce50_P", BIS_param[0])
     source.insert(len(source.columns), "Ce50_R", BIS_param[1])
     source.insert(len(source.columns), "gamma", BIS_param[2])
@@ -371,26 +437,25 @@ for i in range(13):
                 ('gamma', "@gamma"), ('beta', "@beta"),
                 ('E0', "@E0"), ('Emax', "@Emax")]
     p1.add_tools(HoverTool(renderers=[plot], tooltips=tooltips))
-    p1.line(np.arange(0, len(data[0])-1)*5/60, data[5][0:-1],
+    p1.line(np.arange(0, len(data[0])-1)*ts/60, data[5][0:-1],
             legend_label='internal target', line_color="#f46d43")
-    p2.line(np.arange(0, len(data[0]))*5/60,
+    p2.line(np.arange(0, len(data[0]))*ts/60,
             data[1], legend_label='MAP (mmgh)')
-    p2.line(np.arange(0, len(data[0]))*5/60, data[2]*10,
+    p2.line(np.arange(0, len(data[0]))*ts/60, data[2]*10,
             legend_label='CO (cL/min)', line_color="#f46d43")
-    p3.line(np.arange(0, len(data[3]))*5/60, data[3],
+    p3.line(np.arange(0, len(data[3]))*ts/60, data[3],
             line_color="#006d43", legend_label='propofol (mg/min)')
-    p3.line(np.arange(0, len(data[4]))*5/60, data[4],
+    p3.line(np.arange(0, len(data[4]))*ts/60, data[4],
             line_color="#f46d43", legend_label='remifentanil (ng/min)')
-    p3.line(np.arange(0, len(data[8]))*5/60, data[8], legend_label='Best model id')
+    p3.line(np.arange(0, len(data[8]))*ts/60, data[8], legend_label='Best model id')
     p4.line(data[6][3], data[7][3])
-    TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
-        data[0], Te=5, phase=phase)
-    TT_list.append(TT)
-    ST10_list.append(ST10)
-    IAE_list.append(IAE)
+    # TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
+    #     data[0], Te=ts, phase=phase)
+    # TT_list.append(TT)
+    # ST10_list.append(ST10)
+    # IAE_list.append(IAE)
 
-t1 = time.time()
-print('one_step time: ' + str((t1-t0)/(2*60)))
+
 p1.title.text = 'BIS'
 p3.title.text = 'Infusion rates'
 p1.xaxis.axis_label = 'Time (min)'
@@ -411,7 +476,7 @@ print("Max ST10 : " + str(np.round(np.nanmax(ST10_list), 2)))
 
 # Simulation parameter
 phase = 'induction'
-Number_of_patient = 32
+Number_of_patient = 128
 # MPC_param = [30, 30, 1, 10*np.diag([2,1]), 0.1]
 
 # param_opti = pd.read_csv('optimal_parameters_MPC_lin.csv')
@@ -423,17 +488,6 @@ Number_of_patient = 32
 
 MPC_param = [30, 30, 2, 1e-2]
 EKF_param = [0, 0, 1]
-
-
-IAE_list = []
-TT_list = []
-ST10_list = []
-ST20_list = []
-US_list = []
-BIS_NADIR_list = []
-p1 = figure(width=900, height=300)
-p2 = figure(width=900, height=300)
-p3 = figure(width=900, height=300)
 
 
 def one_simu(x, i):
@@ -466,6 +520,15 @@ pool_obj.join()
 
 # print([r[0] for r in result])
 
+IAE_list = []
+TT_list = []
+ST10_list = []
+ST20_list = []
+US_list = []
+BIS_NADIR_list = []
+p1 = figure(width=900, height=300)
+p2 = figure(width=900, height=300)
+p3 = figure(width=900, height=300)
 for i in range(Number_of_patient):
     print(i)
     IAE = result[i][0]
@@ -473,7 +536,7 @@ for i in range(Number_of_patient):
     BIS_param = result[i][2]
 
     source = pd.DataFrame(data=data[0], columns=['BIS'])
-    source.insert(len(source.columns), "time", np.arange(0, len(data[0]))*5/60)
+    source.insert(len(source.columns), "time", np.arange(0, len(data[0]))*2/60)
     # source.insert(len(source.columns),"Ce50_P", BIS_param[0])
     # source.insert(len(source.columns),"Ce50_R", BIS_param[1])
     # source.insert(len(source.columns),"gamma", BIS_param[2])
@@ -488,16 +551,16 @@ for i in range(Number_of_patient):
     # p1.add_tools(HoverTool(renderers=[plot], tooltips=tooltips))
     # p1.line(np.arange(0,len(data[0]))*5/60, data[5],
     #         legend_label='internal target', line_color="#f46d43")
-    p2.line(np.arange(0, len(data[0]))*5/60,
+    p2.line(np.arange(0, len(data[0]))*2/60,
             data[1], legend_label='MAP (mmgh)')
-    p2.line(np.arange(0, len(data[0]))*5/60, data[2]*10,
+    p2.line(np.arange(0, len(data[0]))*2/60, data[2]*10,
             legend_label='CO (cL/min)', line_color="#f46d43")
-    p3.line(np.arange(0, len(data[3]))*5/60, data[3],
+    p3.line(np.arange(0, len(data[3]))*2/60, data[3],
             line_color="#006d43", legend_label='propofol (mg/min)')
-    p3.line(np.arange(0, len(data[4]))*5/60, data[4],
+    p3.line(np.arange(0, len(data[4]))*2/60, data[4],
             line_color="#f46d43", legend_label='remifentanil (ng/min)')
     TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
-        data[0], Te=5, phase=phase)
+        data[0], Te=2, phase=phase)
     TT_list.append(TT)
     BIS_NADIR_list.append(BIS_NADIR)
     ST10_list.append(ST10)
@@ -556,6 +619,6 @@ result_table.insert(len(result_table.columns), "US",
 print(result_table.to_latex(index=False))
 
 p1.output_backend = "svg"
-export_svg(p1, filename="BIS_MPC_lin.svg")
+export_svg(p1, filename="BIS_multi_MPC.svg")
 p3.output_backend = "svg"
-export_svg(p3, filename="input_MPC_lin.svg")
+export_svg(p3, filename="input_multi_MPC.svg")

@@ -7,7 +7,7 @@ Created on Tue Nov 22 17:16:03 2022
 """
 import pandas as pd
 import numpy as np
-from src.PAS import Patient, disturbances, metrics
+from src.PAS import metrics
 from bokeh.plotting import figure, show
 from bokeh.layouts import row, column
 import matplotlib.pyplot as plt
@@ -17,8 +17,9 @@ Number_of_patient = 128
 phase = 'induction'
 
 
+# title = '_NMPC'
 title = '_multi_NMPC'
-Data = pd.read_csv("result" + title + "_n="+str(Number_of_patient)+'.csv')
+Data = pd.read_csv("./Our_idea/result" + title + "_n=" + str(Number_of_patient) + '.csv')
 
 
 if phase == 'induction':
@@ -41,20 +42,21 @@ p3 = figure(width=900, height=300)
 for i in range(Number_of_patient):
     print(i)
 
-    BIS = Data[str(i)+'_BIS']
-    Time = np.arange(0, len(BIS))*5/60
+    BIS = Data[str(i) + '_BIS']
+    Time = np.arange(0, len(BIS)) * 5 / 60
     p1.line(Time, BIS, legend_label='internal target')
     # p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
-    p2.line(Time, Data[str(i)+'_MAP'], legend_label='MAP (mmgh)')
-    p2.line(Time, Data[str(i)+'_CO']*10, legend_label='CO (cL/min)', line_color="#f46d43")
-    p3.line(Time, Data[str(i)+'_Up'], line_color="#006d43",
+    p2.line(Time, Data[str(i) + '_MAP'], legend_label='MAP (mmgh)')
+    p2.line(Time, Data[str(i) + '_CO'] * 10,
+            legend_label='CO (cL/min)', line_color="#f46d43")
+    p3.line(Time, Data[str(i) + '_Up'], line_color="#006d43",
             legend_label='propofol (mg/min)')
-    p3.line(Time, Data[str(i)+'_Ur'], line_color="#f46d43",
+    p3.line(Time, Data[str(i) + '_Ur'], line_color="#f46d43",
             legend_label='remifentanil (ng/min)')
 
     if phase == 'induction':
         TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
-            Data[str(i)+'_BIS'], Te=5, phase=phase)
+            Data[str(i) + '_BIS'], Ts=5, phase=phase)
         TT_list.append(TT)
         BIS_NADIR_list.append(BIS_NADIR)
         ST10_list.append(ST10)
@@ -62,7 +64,7 @@ for i in range(Number_of_patient):
         US_list.append(US)
     elif phase == 'maintenance':
         TTp, BIS_NADIRp, TTn, BIS_NADIRn = metrics.compute_control_metrics(
-            Data[str(i)+'_BIS'], Te=5, phase=phase)
+            Data[str(i) + '_BIS'], Ts=5, phase=phase)
         TTp_list.append(TTp)
         TTn_list.append(TTn)
         BIS_NADIRp_list.append(BIS_NADIRp)
@@ -135,7 +137,7 @@ elif phase == 'maintenance':
 
 print(result_table.to_latex(index=False))
 
-p1.output_backend = "svg"
-export_svg(p1, filename="BIS" + title + ".svg")
-p3.output_backend = "svg"
-export_svg(p3, filename="BIS" + title + ".svg")
+# p1.output_backend = "svg"
+# export_svg(p1, filename="./Our_idea/BIS" + title + ".svg")
+# p3.output_backend = "svg"
+# export_svg(p3, filename="./Our_idea/input" + title + ".svg")

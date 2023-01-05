@@ -6,22 +6,21 @@ Created on Tue Nov 22 15:46:11 2022
 @author: aubouinb
 """
 
+from scipy.linalg import block_diag
+from filterpy.common import Q_continuous_white_noise
+from functools import partial
+import pandas as pd
+import numpy as np
+import multiprocessing
+import time
+from Estimators import EKF
+from Controller import NMPC, MPC
+from src.PAS import Patient, disturbances, metrics
 import sys
 import os
 path = os.getcwd()
 path_root = path[:-9]
 sys.path.append(str(path_root))
-from src.PAS import Patient, disturbances, metrics
-from Controller import NMPC, MPC
-from Estimators import EKF
-
-import time
-import multiprocessing
-import numpy as np
-import pandas as pd
-from functools import partial
-from filterpy.common import Q_continuous_white_noise
-from scipy.linalg import block_diag
 
 
 def simu(Patient_info: list, style: str, MPC_param: list, random_PK: bool = False, random_PD: bool = False):
@@ -178,7 +177,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, random_PK: bool = Fals
 # %% Inter patient variability
 # Simulation parameter
 phase = 'induction'
-Number_of_patient = 32
+Number_of_patient = 128
 MPC_param = [20, 20, 10**(1.5) * np.diag([3, 1]), 1e-2]
 
 
@@ -193,7 +192,7 @@ def one_simu(i):
 
     Patient_info = [age, height, weight, gender] + [None] * 6
     iae, data, BIS_param = simu(Patient_info, 'induction', MPC_param,
-                                random_PK=False, random_PD=True,)
+                                random_PK=True, random_PD=True,)
     return ([iae, data, BIS_param, i])
 
 

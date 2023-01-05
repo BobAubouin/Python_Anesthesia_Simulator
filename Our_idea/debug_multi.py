@@ -1,5 +1,6 @@
-""".
-Created on Fri Dec  9 14:22:34 2022
+
+"""
+CreaTsd on Fri Dec  9 14:22:34 2022
 
 @author: aubouinb
 """
@@ -13,6 +14,9 @@ import numpy as np
 from src.Control.Estimators import EKF
 from src.Control.Controller import NMPC
 from src.PAS import Patient, disturbances
+from bokeh.plotting import figure, show
+from bokeh.layouts import row, column
+import matplotlib.pyplot as plt
 
 
 def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
@@ -153,7 +157,8 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
             # estimation
             X_estimate_temp = np.zeros((8, model_number))
             BIS_EKF_temp = np.zeros(model_number)
-
+            Up_temp = np.zeros(model_number)
+            Ur_temp = np.zeros(model_number)
             for j in range(model_number):
                 (X_estimate_temp[:, j],
                  BIS_EKF_temp[j]) = Estimator_list[j].estimate([uP, uR], BIS[i])
@@ -246,7 +251,6 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     return(IAE, [BIS, MAP, CO, Up, Ur, BIS_cible_MPC, Xp_EKF, Xr_EKF, best_model_id],
            George.BisPD.BIS_param)
 
-
 # %% Inter patient variability
 
 
@@ -265,13 +269,6 @@ Number_of_patient = 128
 MPC_param = [30, 30, 2, 1e-2]
 EKF_param = [0, 0, 1]
 
-
-IAE_list = []
-TT_list = []
-ST10_list = []
-ST20_list = []
-US_list = []
-BIS_NADIR_list = []
 
 MPC_param = [20, 20, 10**(1.5) * np.diag([3, 1]), 1e-2]
 EKF_param = [1, 1, 1]
@@ -295,22 +292,28 @@ def one_simu(i):
 
 
 t0 = time.time()
-pool_obj = multiprocessing.Pool(8)
-result = pool_obj.map(one_simu, range(0, Number_of_patient))
-pool_obj.close()
-pool_obj.join()
-
-df = pd.DataFrame()
-
-for i in range(Number_of_patient):
-    print(i)
-
-    data = result[i][1]
-    name = ['BIS', 'MAP', 'CO', 'Up', 'Ur']
-    dico = {str(i) + '_' + name[j]: data[j] for j in range(5)}
-    df = pd.concat([df, pd.DataFrame(dico)], axis=1)
-
-df.to_csv("result_multi_NMPC_n=" + str(Number_of_patient) + '.csv')
+result = one_simu(108)
 t1 = time.time()
-
 print(t1 - t0)
+
+p1 = figure(width=900, height=300)
+p2 = figure(width=900, height=300)
+p3 = figure(width=900, height=300)
+data = result[1]
+Time = np.arange(0, len(data[1]))*2/60
+p1.line(Time, data[0], legend_label='BIS')
+# p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
+p2.line(Time, data[1], legend_label='MAP (mmgh)')
+p2.line(Time, data[2] * 10,
+        legend_label='CO (cL/min)', line_color="#f46d43")
+p3.line(Time, data[3], line_color="#006d43",
+        legend_label='propofol (mg/min)')
+p3.line(Time, data[4], line_color="#f46d43",
+        legend_label='remifentanil (ng/min)')
+p3.line(Time, data[-1], legend_label='best model')
+p1.title.text = 'BIS'
+p3.title.text = 'Infusion raTss'
+p3.xaxis.axis_label = 'Time (min)'
+grid = row(column(p3, p1, p2))
+
+show(grid)

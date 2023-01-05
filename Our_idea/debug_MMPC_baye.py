@@ -1,5 +1,6 @@
-""".
-Created on Fri Dec  9 14:22:34 2022
+
+"""
+Created on Wed Jan  4 14:30:37 2023
 
 @author: aubouinb
 """
@@ -12,7 +13,11 @@ import pandas as pd
 import numpy as np
 from src.Control.Estimators import EKF
 from src.Control.Controller import NMPC
+from Our_idea.MMPC_control import Baye_MMPC_best, Baye_MMPC_mean
 from src.PAS import Patient, disturbances
+from bokeh.plotting import figure, show
+from bokeh.layouts import row, column
+import matplotlib.pyplot as plt
 
 
 def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
@@ -118,8 +123,10 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
                                     dumin=[-dup_max, - dur_max],
                                     dymin=0, ki=0))
 
+    # MMPC = Baye_MMPC_best(Estimator_list, Controller_list, K=5, hysteresis=0.05)
+    MMPC = Baye_MMPC_mean(Estimator_list, Controller_list[13], BIS_parameters, K=5)
     if style == 'induction':
-        N_simu = int(10 / ts) * 60
+        N_simu = int(20 / ts) * 60
         BIS = np.zeros(N_simu)
         BIS_cible_MPC = np.zeros(N_simu)
         BIS_EKF = np.zeros(N_simu)
@@ -140,7 +147,7 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
         epsilon_hysteresis = 1
         for i in range(N_simu):
 
-            Dist = disturbances.compute_disturbances(i * ts, 'null')
+            Dist = disturbances.compute_disturbances(i * ts, 'step')
             Bis, Co, Map = George.one_step(uP, uR, Dist=Dist, noise=False)
             Xp[:, i] = George.PropoPK.x.T[0]
             Xr[:, i] = George.RemiPK.x.T[0]
@@ -150,60 +157,15 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
             CO[i] = Co[0, 0]
             if i == N_simu - 1:
                 break
-            # estimation
-            X_estimate_temp = np.zeros((8, model_number))
-            BIS_EKF_temp = np.zeros(model_number)
-
-            for j in range(model_number):
-                (X_estimate_temp[:, j],
-                 BIS_EKF_temp[j]) = Estimator_list[j].estimate([uP, uR], BIS[i])
-
-                Xp_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[:4, j]
-                Xr_EKF[j * 4:(j + 1) * 4, i] = X_estimate_temp[4:, j]
-
-                if i >= n_pred:
-
-                    x = np.concatenate(((Xp_EKF[j * 4:(j + 1) * 4, i - n_pred],
-                                         Xr_EKF[j * 4:(j + 1) * 4, i - n_pred])), axis=0)
-                    bis_pred = Estimator_list[j].predict_from_state(x=x,
-                                                                    up=Up[i - n_pred:i],
-                                                                    ur=Ur[i - n_pred:i])
-                    error[j] = np.sum(np.abs(bis_pred - BIS[i - n_pred:i + 1]))
-                else:
-                    error[j] = 0
-
-                # X_MPC = np.concatenate((Xp[:,i],Xr[:,i]),axis = 0)
-                if i == 20:  # or (BIS_EKF[i]<50 and MPC_controller.ki==0):
-                    Controller_list[j].ki = ki_mpc
-
-                X_estimate_temp[:, j] = np.clip(
-                    X_estimate_temp[:, j], a_min=0, a_max=1e10)
-
-            BIS_cible_MPC[i] = Controller_list[0].internal_target
-            error_min = min(error)
-            idx_best_list = [i for i, j in enumerate(error) if j == error_min]
-            idx_best_new = idx_best_list[0]
-            if abs(error[idx_best_new] - error[idx_best]) > epsilon_hysteresis:
-                idx_best = idx_best_new
-
-            Controller_list[idx_best].U_prec[0:2] = [uP, uR]
-            uP, uR, b = Controller_list[idx_best].one_step(
-                X_estimate_temp[:, idx_best], BIS_cible, BIS_EKF_temp[idx_best])
-            # for j in range(model_number):
-            #     if j != idx_best:
-            #         if Controller_list[j].internal_target is None:
-            #             Controller_list[j].internal_target = BIS_cible
-            #         Controller_list[j].internal_target += Controller_list[j].ki * \
-            #             (BIS_cible - BIS_EKF_temp[j])
-
+            # control
+            if i > 90:
+                MMPC.controller.ki = ki_mpc
+            U, best_model = MMPC.one_step([uP, uR], Bis)
+            best_model_id[i] = best_model
+            uP = U[0]
+            uR = U[1]
             Up[i] = uP
             Ur[i] = uR
-            best_model_id[i] = idx_best
-
-            if i >= n_pred:
-                n_pred += 1
-                n_pred = min(n_pred, 30)
-                epsilon_hysteresis = n_pred * 3
 
     # elif style == 'total':
     #     N_simu = int(20/ts)*60
@@ -246,7 +208,6 @@ def simu(Patient_info: list, style: str, MPC_param: list, EKF_param: list,
     return(IAE, [BIS, MAP, CO, Up, Ur, BIS_cible_MPC, Xp_EKF, Xr_EKF, best_model_id],
            George.BisPD.BIS_param)
 
-
 # %% Inter patient variability
 
 
@@ -265,13 +226,6 @@ Number_of_patient = 128
 MPC_param = [30, 30, 2, 1e-2]
 EKF_param = [0, 0, 1]
 
-
-IAE_list = []
-TT_list = []
-ST10_list = []
-ST20_list = []
-US_list = []
-BIS_NADIR_list = []
 
 MPC_param = [20, 20, 10**(1.5) * np.diag([3, 1]), 1e-2]
 EKF_param = [1, 1, 1]
@@ -295,22 +249,28 @@ def one_simu(i):
 
 
 t0 = time.time()
-pool_obj = multiprocessing.Pool(8)
-result = pool_obj.map(one_simu, range(0, Number_of_patient))
-pool_obj.close()
-pool_obj.join()
-
-df = pd.DataFrame()
-
-for i in range(Number_of_patient):
-    print(i)
-
-    data = result[i][1]
-    name = ['BIS', 'MAP', 'CO', 'Up', 'Ur']
-    dico = {str(i) + '_' + name[j]: data[j] for j in range(5)}
-    df = pd.concat([df, pd.DataFrame(dico)], axis=1)
-
-df.to_csv("result_multi_NMPC_n=" + str(Number_of_patient) + '.csv')
+result = one_simu(108)
 t1 = time.time()
-
 print(t1 - t0)
+
+p1 = figure(width=900, height=300)
+p2 = figure(width=900, height=300)
+p3 = figure(width=900, height=300)
+data = result[1]
+Time = np.arange(0, len(data[1]))*2/60
+p1.line(Time, data[0], legend_label='BIS')
+# p1.line(np.arange(0,len(data[0]))*5/60, data[5], legend_label='internal target', line_color="#f46d43")
+p2.line(Time, data[1], legend_label='MAP (mmgh)')
+p2.line(Time, data[2] * 10,
+        legend_label='CO (cL/min)', line_color="#f46d43")
+p3.line(Time, data[3], line_color="#006d43",
+        legend_label='propofol (mg/min)')
+p3.line(Time, data[4], line_color="#f46d43",
+        legend_label='remifentanil (ng/min)')
+p3.line(Time, data[-1], legend_label='best model')
+p1.title.text = 'BIS'
+p3.title.text = 'Infusion raTss'
+p3.xaxis.axis_label = 'Time (min)'
+grid = row(column(p3, p1, p2))
+
+show(grid)
