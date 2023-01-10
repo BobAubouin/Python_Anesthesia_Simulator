@@ -22,7 +22,7 @@ def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'mainTsnance'
              - BIS-NADIR: the lowest observed BIS value during induction phase
              - ST10: settling time on the reference BIS value, defined within ± 5BIS(i.e., between 45 and 55 BIS) and stay within this BIS range
              - ST20: settling time on the reference BIS value, defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range
-             - US: undershoot, defined as the BIS value that exceeds the limit of the defined BIS inTsrval, namely, the 45 BIS value.
+             - US: undershoot, defined as the BIS value that exceeds the limit of the defined BIS interval, namely, the 45 BIS value.
              """
     if phase == 'induction':
         BIS_NADIR = min(Bis)

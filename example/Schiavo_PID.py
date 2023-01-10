@@ -10,11 +10,7 @@ Created on Mon Apr 25 13:32:55 2022
 propofol and remifentanil coadministration" Michele Schiavo, Fabrizio Padula, Nicola Latronico, 
 Massimiliano Paltenghi,Antonio Visioli 2022"""
 
-# Since the file is on a subfolder of the git we need to add the main folder to the path
 
-
-# Patient table:
-# index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
 from bokeh.io import export_svg
 from bokeh.models import HoverTool
 from bokeh.layouts import row, column
@@ -23,10 +19,11 @@ import casadi as cas
 from pyswarm import pso
 import pandas as pd
 import numpy as np
-from src.Control.Controller import PID
+from PID import PID
 from src.PAS import Patient, disturbances, metrics
-from pathlib import Path
 import time
+# Patient table:
+# index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
 Patient_table = [[1,  40, 163, 54, 0, 4.73, 24.97,  1.08,  0.30, 97.86, 89.62],
                  [2,  36, 163, 50, 0, 4.43, 19.33,  1.16,  0.29, 89.10, 98.86],
                  [3,  28, 164, 52, 0, 4.81, 16.89,  1.54,  0.14, 93.66, 94.],
@@ -86,19 +83,20 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
         Up = np.zeros(N_simu)
         Ur = np.zeros(N_simu)
         uP = 0
+        uR = min(ur_max, max(0, uP * ratio))
         for i in range(N_simu):
-            # if i == 100:
-            #     print("break")
-
-            uR = min(ur_max, max(0, uP * ratio))
-            uP = min(up_max, max(0, uP))
             Bis, Co, Map = George.one_step(uP, uR, noise=False)
             BIS[i] = Bis
             MAP[i] = Map[0, 0]
             CO[i] = Co[0, 0]
+            if i == N_simu - 1:
+                break
+            uP = PID_controller.one_step(Bis, BIS_cible)
+            uR = min(ur_max, max(0, uP * ratio))
+            uP = min(up_max, max(0, uP))
             Up[i] = uP
             Ur[i] = uR
-            uP = PID_controller.one_step(Bis, BIS_cible)
+
     elif style == 'total':
         N_simu = int(60 / ts) * 60
         BIS = np.zeros(N_simu)
@@ -347,16 +345,8 @@ Td = float(param_opti.loc[param_opti['ratio'] == ratio, 'Td'])
 PID_param = [Kp, Ti, Td, ratio]
 
 
-IAE_list = []
-TT_list = []
-ST10_list = []
-ST20_list = []
-US_list = []
-BIS_NADIR_list = []
-p1 = figure(width=900, height=300)
-p2 = figure(width=900, height=300)
-p3 = figure(width=900, height=300)
-
+df = pd.DataFrame()
+name = ['BIS', 'MAP', 'CO', 'Up', 'Ur']
 for i in range(Number_of_patient):
     np.random.seed(i)
     # Generate random patient information with uniform distribution
@@ -367,70 +357,7 @@ for i in range(Number_of_patient):
 
     Patient_info = [age, height, weight, gender] + [None] * 6
     IAE, data = simu(Patient_info, phase, PID_param, random_PD=True, random_PK=True)
-    p1.line(np.arange(0, len(data[0])) / 60, data[0])
-    p2.line(np.arange(0, len(data[0])) / 60, data[1], legend_label='MAP (mmgh)')
-    p2.line(np.arange(0, len(data[0])) / 60, data[2] * 10,
-            legend_label='CO (cL/min)', line_color="#f46d43")
-    p3.line(np.arange(0, len(data[3])) / 60, data[3],
-            line_color="#006d43", legend_label='propofol (mg/min)')
-    p3.line(np.arange(0, len(data[4])) / 60, data[4],
-            line_color="#f46d43", legend_label='remifentanil (ng/min)')
-    TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
-        data[0], Ts=1, phase=phase)
-    TT_list.append(TT)
-    BIS_NADIR_list.append(BIS_NADIR)
-    ST10_list.append(ST10)
-    ST20_list.append(ST20)
-    US_list.append(US)
-    IAE_list.append(IAE)
+    dico = {str(i) + '_' + name[j]: data[j] for j in range(5)}
+    df = pd.concat([df, pd.DataFrame(dico)], axis=1)
 
-p1.title.text = 'BIS'
-p1.xaxis.axis_label = 'Time (min)'
-p3.title.text = 'Infusion rates'
-p3.xaxis.axis_label = 'Time (min)'
-grid = row(column(p3, p1, p2))
-
-show(grid)
-
-print("Mean IAE : " + str(np.mean(IAE_list)))
-print("Mean ST10 : " + str(np.round(np.nanmean(ST10_list), 2)))
-print("Min ST10 : " + str(np.round(np.nanmin(ST10_list), 2)))
-print("Max ST10 : " + str(np.round(np.nanmax(ST10_list), 2)))
-
-result_table = pd.DataFrame()
-result_table.insert(len(result_table.columns), "", ['mean', 'std', 'min', 'max'])
-result_table.insert(len(result_table.columns), "TT (min)", [np.round(np.nanmean(TT_list), 2),
-                                                            np.round(
-                                                                np.nanstd(TT_list), 2),
-                                                            np.round(
-                                                                np.nanmin(TT_list), 2),
-                                                            np.round(np.nanmax(TT_list), 2)])
-result_table.insert(len(result_table.columns), "BIS_NADIR", [np.round(np.nanmean(BIS_NADIR_list), 2),
-                                                             np.round(
-                                                                 np.nanstd(BIS_NADIR_list), 2),
-                                                             np.round(
-                                                                 np.nanmin(BIS_NADIR_list), 2),
-                                                             np.round(np.nanmax(BIS_NADIR_list), 2)])
-result_table.insert(len(result_table.columns), "ST10 (min)", [np.round(np.nanmean(ST10_list), 2),
-                                                              np.round(
-                                                                  np.nanstd(ST10_list), 2),
-                                                              np.round(
-                                                                  np.nanmin(ST10_list), 2),
-                                                              np.round(np.nanmax(ST10_list), 2)])
-result_table.insert(len(result_table.columns), "ST20 (min)", [np.round(np.nanmean(ST20_list), 2),
-                                                              np.round(
-                                                                  np.nanstd(ST20_list), 2),
-                                                              np.round(
-                                                                  np.nanmin(ST20_list), 2),
-                                                              np.round(np.nanmax(ST20_list), 2)])
-result_table.insert(len(result_table.columns), "US", [np.round(np.nanmean(US_list), 2),
-                                                      np.round(np.nanstd(US_list), 2),
-                                                      np.round(np.nanmin(US_list), 2),
-                                                      np.round(np.nanmax(US_list), 2)])
-
-print(result_table.to_latex(index=False))
-
-p1.output_backend = "svg"
-export_svg(p1, filename="BIS_PID.svg")
-p3.output_backend = "svg"
-export_svg(p3, filename="input_PID.svg")
+df.to_csv("Our_idea/result_PID_n=" + str(Number_of_patient) + '.csv')

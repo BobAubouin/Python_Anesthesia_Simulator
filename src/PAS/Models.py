@@ -380,6 +380,14 @@ class Bismodel:
                 self.E0 = truncated_normal(mean=97.4, sd=97.4*0.1, low=80, upp=100)
                 # standard deviation not given in the article, arbitrary fixed to 10%
                 self.Emax = truncated_normal(mean=97.4, sd=97.4*0.1, low=75, upp=100)
+                # self.c50p = truncated_normal(mean=2.5, sd=4.47*0.3, low=2, upp=8)
+                # self.c50r = truncated_normal(mean=12, sd=19.3*0.3, low=10, upp=26)
+                # self.beta = truncated_normal(mean=0, sd=0.5, low=0, upp=3)
+                # self.gamma = truncated_normal(mean=3, sd=1.43*0.3, low=1, upp=5)
+                # # standard deviation not given in the article, arbitrary fixed to 10%
+                # self.E0 = truncated_normal(mean=97.4, sd=97.4*0.1, low=80, upp=100)
+                # # standard deviation not given in the article, arbitrary fixed to 10%
+                # self.Emax = truncated_normal(mean=97.4, sd=97.4*0.1, low=75, upp=100)
         self.BIS_param = [self.c50p, self.c50r, self.gamma, self.beta, self.E0, self.Emax]
 
     def compute_bis(self, cep: float, cer: float):
