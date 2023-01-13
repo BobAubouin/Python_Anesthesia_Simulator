@@ -1,42 +1,25 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 25 13:32:55 2022
-
-@author: aubouinb
-"""
-
 """MISO PID control of anesthesia from "Individualized PID tuning for maintenance of general anesthesia with
 propofol and remifentanil coadministration" Michele Schiavo, Fabrizio Padula, Nicola Latronico, 
 Massimiliano Paltenghi,Antonio Visioli 2022"""
 
+# Standard import
+import time
+import multiprocessing
+from functools import partial
 
+# Third party imports
+import numpy as np
+import pandas as pd
 from bokeh.io import export_svg
 from bokeh.models import HoverTool
 from bokeh.layouts import row, column
 from bokeh.plotting import figure, show
-import casadi as cas
 from pyswarm import pso
-import pandas as pd
-import numpy as np
-from PID import PID
-from src.PAS import Patient, disturbances, metrics
-import time
-# Patient table:
-# index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
-Patient_table = [[1,  40, 163, 54, 0, 4.73, 24.97,  1.08,  0.30, 97.86, 89.62],
-                 [2,  36, 163, 50, 0, 4.43, 19.33,  1.16,  0.29, 89.10, 98.86],
-                 [3,  28, 164, 52, 0, 4.81, 16.89,  1.54,  0.14, 93.66, 94.],
-                 [4,  50, 163, 83, 0, 3.86, 20.97,  1.37,  0.12, 94.60, 93.2],
-                 [5,  28, 164, 60, 1, 5.22, 18.95,  1.21,  0.68, 97.43, 96.21],
-                 [6,  43, 163, 59, 0, 3.41, 23.26,  1.34,  0.58, 85.33, 97.07],
-                 [7,  37, 187, 75, 1, 4.83, 15.21,  1.84,  0.13, 91.87, 90.84],
-                 [8,  38, 174, 80, 0, 4.36, 13.86,  2.23,  1.05, 97.45, 96.36],
-                 [9,  41, 170, 70, 0, 4.57, 16.20,  1.69,  0.16, 85.83, 94.6],
-                 [10, 37, 167, 58, 0, 6.02, 23.47,  1.27,  0.77, 95.18, 88.17],
-                 [11, 42, 179, 78, 1, 3.79, 22.25,  2.35,  1.12, 98.02, 96.95],
-                 [12, 34, 172, 58, 0, 5.70, 18.64,  2.02,  0.40, 99.57, 96.94],
-                 [13, 38, 169, 65, 0, 4.64, 19.50,  1.43,  0.48, 93.82, 94.40]]
+import casadi as cas
+
+# Local imports
+from example.pid import PID
+from src.PAS import patient, disturbances, metrics
 
 
 def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = False, random_PD: bool = False):
@@ -63,9 +46,16 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
     Emax = Patient_info[9]
 
     BIS_param = [Ce50p, Ce50r, gamma, beta, E0, Emax]
-    George = Patient.Patient(age, height, weight, gender,
+    George = patient.Patient(age, height, weight, gender,
                              BIS_param=BIS_param, Random_PK=random_PK,
                              Random_PD=random_PD)
+    bis_params = George.BisPD.BIS_param
+    Ce50p = bis_params[0]
+    Ce50r = bis_params[1]
+    gamma = bis_params[2]
+    beta = bis_params[3]
+    E0 = bis_params[4]
+    Emax = bis_params[5]
 
     ts = 1
     BIS_cible = 50
@@ -73,7 +63,7 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
     ur_max = 16.67
     ratio = PID_param[3]
     PID_controller = PID(Kp=PID_param[0], Ti=PID_param[1], Td=PID_param[2],
-                         N=5, Te=1, umax=max(up_max, ur_max / ratio), umin=0)
+                         N=5, Ts=1, umax=max(up_max, ur_max / ratio), umin=0)
 
     if style == 'induction':
         N_simu = 10 * 60
@@ -156,7 +146,7 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
 
         up = xp[3] / Ce50p
         ur = xr[3] / Ce50r
-        Phi = up / (up + ur)
+        Phi = up / (up + ur + 1e-6)
         U_50 = 1 - beta * (Phi - Phi**2)
         i = (up + ur) / U_50
         J = (50 - (E0 - Emax * i ** gamma / (1 + i ** gamma)))**2
@@ -197,21 +187,52 @@ def simu(Patient_info: list, style: str, PID_param: list, random_PK: bool = Fals
 
 
 # %% PSO
+# Patient table:
+# index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
+Patient_table = [[1,  40, 163, 54, 0, 4.73, 24.97,  1.08,  0.30, 97.86, 89.62],
+                 [2,  36, 163, 50, 0, 4.43, 19.33,  1.16,  0.29, 89.10, 98.86],
+                 [3,  28, 164, 52, 0, 4.81, 16.89,  1.54,  0.14, 93.66, 94.],
+                 [4,  50, 163, 83, 0, 3.86, 20.97,  1.37,  0.12, 94.60, 93.2],
+                 [5,  28, 164, 60, 1, 5.22, 18.95,  1.21,  0.68, 97.43, 96.21],
+                 [6,  43, 163, 59, 0, 3.41, 23.26,  1.34,  0.58, 85.33, 97.07],
+                 [7,  37, 187, 75, 1, 4.83, 15.21,  1.84,  0.13, 91.87, 90.84],
+                 [8,  38, 174, 80, 0, 4.36, 13.86,  2.23,  1.05, 97.45, 96.36],
+                 [9,  41, 170, 70, 0, 2.97, 14.20,  1.89,  0.16, 85.83, 94.6],
+                 [10, 37, 167, 58, 0, 6.02, 23.47,  1.27,  0.77, 95.18, 88.17],
+                 [11, 42, 179, 78, 1, 3.79, 22.25,  2.35,  1.12, 98.02, 96.95],
+                 [12, 34, 172, 58, 0, 5.70, 18.64,  2.02,  0.40, 99.57, 96.94],
+                 [13, 38, 169, 65, 0, 4.64, 19.50,  1.43,  0.48, 93.82, 94.40]]
+
+
+# phase = 'maintenance'
+phase = 'induction'
+
+
+def one_simu(x, ratio, i):
+    '''cost of one simulation, i is the patient index'''
+    Patient_info = Patient_table[i-1][1:]
+    iae, data = simu(Patient_info, phase, [x[0], x[1], x[2], ratio])
+    return iae
+
 
 def cost(x, ratio):
-    '''cost of the optimization, x is the vector of the PID controller
+    """cost of the optimization, x is the vector of the PID controller
     x = [Kp, Ti, Td]
-    IAE is the maximum integrated absolut error over the patient population'''
-    IAE = []
-    for i in range(13):
-        Patient_info = Patient_table[i - 1][1:]
-        iae, data = simu(Patient_info, 'induction', [x[0], x[1], x[2], ratio])
-        IAE.append(iae)
+    IAE is the maximum integrated absolut error over the patient population"""
+    pool_obj = multiprocessing.Pool()
+    func = partial(one_simu, x, ratio)
+    IAE = pool_obj.map(func, range(0, 13))
+    pool_obj.close()
+    pool_obj.join()
+
     return max(IAE)
 
 
 try:
-    param_opti = pd.read_csv('./example/optimal_parameters_PID.csv')
+    if phase == 'maintenance':
+        param_opti = pd.read_csv('./example/optimal_parameters_PID_reject.csv')
+    else:
+        param_opti = pd.read_csv('./example/optimal_parameters_PID.csv')
 except:
     param_opti = pd.DataFrame(columns=['ratio', 'Kp', 'Ti', 'Td'])
     for ratio in range(2, 3):
@@ -223,14 +244,12 @@ except:
         param_opti = pd.concat((param_opti, pd.DataFrame(
             {'ratio': ratio, 'Kp': xopt[0], 'Ti': xopt[1], 'Td': xopt[2]}, index=[0])), ignore_index=True)
         print(ratio)
-
-    param_opti.to_csv('./example/optimal_parameters_PID.csv')
+    if phase == 'maintenance':
+        param_opti.to_csv('./example/optimal_parameters_PID_reject.csv')
+    else:
+        param_opti.to_csv('./example/optimal_parameters_PID.csv')
 
 # %%test on patient table
-
-
-phase = 'induction'
-
 
 IAE_list = []
 TT_list = []
@@ -255,9 +274,12 @@ for ratio in range(2, 3):
                 line_color="#006d43", legend_label='propofol (mg/min)')
         p3.line(np.arange(0, len(data[4]))/60, data[4],
                 line_color="#f46d43", legend_label='remifentanil (ng/min)')
-        TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(
-            data[0], Ts=1, phase=phase)
-        TT_list.append(TT)
+        if phase == 'induction':
+            TT, BIS_NADIR, ST10, ST20, US = metrics.compute_control_metrics(data[0], Ts=1, phase=phase)
+            TT_list.append(TT)
+        else:
+            TTp, BIS_NADIRp, TTn, BIS_NADIRn = metrics.compute_control_metrics(data[0], Ts=1, phase=phase)
+            TT_list.append(TTp)
         IAE_list.append(IAE)
 p1.title.text = 'BIS'
 p3.title.text = 'Infusion rates'
@@ -334,9 +356,9 @@ print("Max TT : " + str(np.max(TT_list)))
 
 
 # Simulation parameter
-phase = 'induction'
+phase = 'maintenance'
 ratio = 2
-Number_of_patient = 128
+Number_of_patient = 500
 
 # Controller parameters
 Kp = float(param_opti.loc[param_opti['ratio'] == ratio, 'Kp'])
@@ -360,4 +382,4 @@ for i in range(Number_of_patient):
     dico = {str(i) + '_' + name[j]: data[j] for j in range(5)}
     df = pd.concat([df, pd.DataFrame(dico)], axis=1)
 
-df.to_csv("Our_idea/result_PID_n=" + str(Number_of_patient) + '.csv')
+df.to_csv("TIVA_Drug_Control/Results_data/result_PID_maintenance_n=" + str(Number_of_patient) + '.csv')
