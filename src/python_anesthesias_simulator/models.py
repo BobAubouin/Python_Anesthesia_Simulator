@@ -7,6 +7,7 @@ from scipy.stats import truncnorm
 
 
 def truncated_normal(mean=0, sd=1, low=0, upp=10):
+    """Generate a random float number from a a truncate dnormal distribution"""
     return truncnorm(
         (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd).rvs()
 
@@ -320,7 +321,7 @@ class PKmodel:
         self.y = np.dot(self.C, self.x)
 
     def one_step(self, u: float):
-        """Simulate on step of PK model with infusion rate u (mg/s).
+        """Simulate on step of PK model with infusion rate u (µg/s for Propofol, ng/s for Remifentanil).
 
         return the actual blood and effect site concentration (mg/L)
         """

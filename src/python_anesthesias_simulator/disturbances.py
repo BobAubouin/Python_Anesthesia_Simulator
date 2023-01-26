@@ -56,10 +56,10 @@ def compute_disturbances(time: float, dist_profil: str = 'realistic'):
                                   [50,    0,  0,   0]])
     elif dist_profil == 'step':
         Disturb_point = np.array([[0,     0,  0,   0],  # time, BIS signal, MAP, CO signals
-                                  [4.999,   0,  0,   0],
-                                  [5,    10,  5, 0.3],
-                                  [15,   10,  5, 0.3],
-                                  [15.001,  0,  5,   0],
+                                  [9.999,   0,  0,   0],
+                                  [10,    10,  5, 0.3],
+                                  [20,   10,  5, 0.3],
+                                  [20.001,  0,  5,   0],
                                   [30,    0,  0,   0]])
 
     elif dist_profil == 'null':
