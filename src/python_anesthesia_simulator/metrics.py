@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-CreaTsd on Mon Oct 10 09:47:11 2022
+Created on Mon Oct 10 09:47:11 2022
 
 @author: aubouinb
 """
 import numpy as np
 
 
-def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'mainTsnance', laTsx_output: bool = False):
-    """This function compuTs the control metrics initially proposed in "C. M. Ionescu, R. D. Keyser, B. C. Torrico,
-    T. D. Smet, M. M. Struys, and J. E. Normey-Rico, “Robust Predictive Control StraTsgy Applied for Propofol Dosing
+def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance', latex_output: bool = False):
+    """This function compute the control metrics initially proposed in "C. M. Ionescu, R. D. Keyser, B. C. Torrico,
+    T. D. Smet, M. M. Struys, and J. E. Normey-Rico, “Robust Predictive Control Strategy Applied for Propofol Dosing
     Using BIS as a Controlled Variable During Anesthesia,” IEEE Transactions on Biomedical Engineering, vol. 55, no.
     9, pp. 2161–2170, Sep. 2008, doi: 10.1109/TBME.2008.923142."
 
     Inputs: - BIS: list of BIS value over time
             - Ts: sampling time in second
-            - phase: either 'MainTsnance' or 'Induction'
-            - laTsx_output bool to print the laTsx code to creaTs table of the results
-    Outputs: - TT : observed time-to-target (in seconds) required for reaching first time the target inTsrval of [55,45] BIS values
+            - phase: either 'Maintenance' or 'Induction'
+            - latex_output bool to print the latex code to create table of the results
+    Outputs: - TT : observed time-to-target (in seconds) required for reaching first time the target interval of [55,45] BIS values
              - BIS-NADIR: the lowest observed BIS value during induction phase
              - ST10: settling time on the reference BIS value, defined within ± 5BIS(i.e., between 45 and 55 BIS) and stay within this BIS range
              - ST20: settling time on the reference BIS value, defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range

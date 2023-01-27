@@ -1,3 +1,4 @@
+"""Anesthesia Simulator: translation of the Open-Source Matlab simulator form Ionescu et al."""
 # Standard import
 
 # Third party imports
@@ -24,33 +25,44 @@ class Patient:
                  Random_PK: bool = False,
                  Random_PD: bool = False,
                  CO_update: bool = False):
-        """ Initialise a patient class for anesthesia simulation.
+        """
+        Initialise a patient class for anesthesia simulation.
 
-        Inputs:     - age (year)
-                    - height (cm)
-                    - weight (kg)
-                    - gender (0 for female, 1 for male)
-                    - CO_base: base Cardiac Output (L/min) default = 6.5 L/min
-                    - MAP_base: Mean Arterial Pressure (mmHg), default = 90mmHg
-                    - model_propo: author of the propofol PK model 'Schnider', 'Marsh, 'Schuttler' or 'Eleveld',
-                      default = 'Schnider'
-                    - model_remi: author of the Remifentanil PK model 'Minto', 'Eleveld2', default = 'Minto'
-                    - Ts: Sampling period (s), default = 1s
-                    - BIS_param: Parameter of the BIS model (Propo Remi interaction) list [C50p_BIS, C50r_BIS,
-                                                                                           gamma_BIS, beta_BIS,
-                                                                                           E0_BIS, Emax_BIS]
-                            - C50p_BIS : Concentration at half effect for propofol effect on BIS
-                            - C50r_BIS : Concentration at half effect for remifentanil effect on BIS
-                            - gamma_BIS : slope coefficient for the BIS  model,
-                            - beta_BIS : interaction coefficient for the BIS model,
-                            - E0_BIS : initial BIS,
-                            - Emax_BIS : max effect of the drugs on BIS
-                    - Random_PK: add uncertainties in the PK models to study inter-patient variability,
-                      default = False
-                    - Random_PD: add uncertainties in the PD models to study inter-patient variability,
-                      default = False
-                    - CO_update: bool to turn on the option to update PK parameters thanks to the CO value,
-                      default = False
+        Parameters
+        ----------
+        age : float
+            in year.
+        height : float
+            in cm.
+        weight : float
+            in kg.
+        sex : bool
+            1=male, 0= female.
+        CO_base : float, optional
+            Initial cardiac output. The default is 6.5L/min.
+        MAP_base : float, optional
+            Initial Mean Arterial Pressure. The default is 90mmHg.
+        model_propo : str, optional
+            Name of the Propofol PK Model. The default is 'Schnider'.
+        model_remi : str, optional
+            Name of the Remifentanil PK Model. The default is 'Minto'.
+        Ts : float, optional
+            Samplling time (s). The default is 1.
+        BIS_param : list, optional
+            Parameter of the BIS model (Propo Remi interaction)
+            list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS].
+            The default is [None]*6.
+        Random_PK : bool, optional
+            Add uncertainties in the Propodfol and Remifentanil PK models. The default is False.
+        Random_PD : bool, optional
+            Add uncertainties in the BIS PD model. The default is False.
+        CO_update : bool, optional
+            Turn on the option to update PK parameters thanks to the CO value. The default is False.
+
+        Returns
+        -------
+        None.
+
         """
         self.age = age
         self.height = height
@@ -92,16 +104,25 @@ class Patient:
                                  Te=self.Ts)
 
     def one_step(self, uP: float = 0, uR: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
-        """Run the simulation on one step time.
+        """
+        Simulate one step time of the patient.
 
-        Inputs:     - uP: Propofol infusion rate (µg/min)
-                    - uR: Remifentanil infusion rate (ng/min)
-                    - Disturbance vector on [BIS (%), MAP (mmHg), CO (L/min)]
-                    - noise: bool to add measurement n noise on the outputs
+        Parameters
+        ----------
+        uP : float, optional
+            Propofol infusion rate (mg/s). The default is 0.
+        uR : float, optional
+            Remifentanil infusion rate (µg/s). The default is 0.
+        Dist : list, optional
+            Disturbance vector on [BIS (%), MAP (mmHg), CO (L/min)]. The default is [0]*3.
+        noise : bool, optional
+            bool to add measurement n noise on the outputs. The default is True.
 
-        Outputs:    - current BIS (%)
-                    - current MAP (mmHg)
-                    - current CO (L/min)
+        Returns
+        -------
+        output : list
+            [BIS, MAP, CO] : current BIS (%), MAP (mmHg) ,and CO (L/min)
+
         """
         # Hemodynamic
         [self.CO, self.MAP] = self.Hemo.one_step(self.PropoPK.x[0], self.RemiPK.x[0])
