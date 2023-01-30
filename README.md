@@ -6,12 +6,9 @@ This repository includes the Python Anesthesia Simulator (PAS), used to perform 
 
     .
     ├─── src
-    |   ├─── PAS           # Simulator library + metrics function
-    |   ├─── Control       # Control + Estimation library
+    |   ├─── python_anesthesia_simulator           # Simulator library + metrics function
     |
     ├── example            # example of controller test pipeline with the library 
-    |   ├── ...
-    ├── our_idea 	    # our control idea with EKF and MPC
     |   ├── ...
     ├── LICENSE
     ├── requirements.txt
@@ -26,7 +23,7 @@ Available soon in the _Documentation.pdf_ file.
 _GNU General Public License 3.0_
 
 ## Project status
-Stable, Hemodynamic still need to be added, working on documentation
+Stable, hemodynamic drugs still need to be added, working on documentation
 
 ## Author
 Bob Aubouin--Paitault
