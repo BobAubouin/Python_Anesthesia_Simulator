@@ -26,7 +26,7 @@ Available soon in the _Documentation.pdf_ file.
 _GNU General Public License 3.0_
 
 ## Project status
-In dev, PK model ok, PD-BIS model ok, example on PID ok, working on MISO control
+Stable, Hemodynamic still need to be added, working on documentation
 
 ## Author
 Bob Aubouin--Paitault
