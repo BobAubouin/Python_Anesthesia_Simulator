@@ -60,7 +60,7 @@ def discretize(A: list, B: list, C: list, D: list, Ts: float, method: str) -> (l
     if method == 'exact':
         model = control.ss(np.array(A), B, C, D)
         model = control.sample_system(model, Ts/60)
-        A_d, B_d, C_d, D_d = model.A, model.B, model.C, model.C
+        A_d, B_d, C_d, D_d = model.A, model.B, model.C, model.D
     elif method == 'euler':
         A_d = np.eye(4) + Ts/60 * A
         B_d = Ts/60 * B
@@ -334,7 +334,7 @@ class PKmodel:
 
         self.B_nom = np.transpose(np.array([[60/self.v1, 0, 0, 0]]))  # min/s/L
         self.C = np.array([[1, 0, 0, 0, ], [0, 0, 0, 1]])
-        self.D = 0
+        self.D = np.array([[0], [0]])
 
         # Introduce inter-patient variability
         if random is True:
@@ -629,7 +629,7 @@ class NMB_PKPD:
                               k1 * k2 * k3 * alpha ** 3])
         self.tfd = control.sample_system(self.tf, Ts, method='bilinear')
         self.sys = control.tf2ss(self.tfd)
-        self.x = np.zeros(3, 1)
+        self.x = np.zeros((3, 1))
         self.ce = 0
 
     def one_step(self, ua: float, cer: float) -> float:

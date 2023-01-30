@@ -8,13 +8,28 @@ Created on Mon Oct 10 09:47:10 2022
 import numpy as np
 
 
-def compute_disturbances(time: float, dist_profil: str = 'realistic'):
-    """Give the value of the distubance profil for a given time
-    Inputs: - Time: in seconde
-            - disturbance profil, can be: 'realistic', 'simple', 'step' or null, default = 'realistic'
-    Outputs:- dist_bis, dist_map, dist_co: respectively the additive disturbance to add to the BIS, MAP and CO signals
+def compute_disturbances(time: float, dist_profil: str = 'realistic',
+                         start_step: float = 600, end_step: float = 1200) -> list:
     """
+    Give the value of the distubance profil for a given time.
 
+    Parameters
+    ----------
+    time : float
+        Time: in seconde.
+    dist_profil : str, optional
+        disturbance profil, can be: 'realistic', 'simple', 'step' or "null". The default is 'realistic'.
+    start_step : float, optional
+        start time of the step distuebance (seconds). The default is 600s.
+    end_step : float, optional
+        End time of the step distuebance (seconds). The default is 1200s.
+
+    Returns
+    -------
+    list
+        dist_bis, dist_map, dist_co: respectively the additive disturbance to add to the BIS, MAP and CO signals.
+
+    """
     if dist_profil == 'realistic':
         Disturb_point = np.array([[0,     0,  0, 0],  # time, BIS signal, MAP, CO signals
                                   [9.9,   0,  0, 0],

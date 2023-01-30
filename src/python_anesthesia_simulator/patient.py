@@ -5,7 +5,7 @@
 import numpy as np
 
 # Local imports
-from .models import PKmodel, Bismodel, Hemodynamics
+from .models import PKmodel, Bismodel, Hemodynamics, NMB_PKPD, Rassmodel
 
 
 class Patient:
@@ -36,7 +36,7 @@ class Patient:
             in cm.
         weight : float
             in kg.
-        sex : bool
+        gender : bool
             1=male, 0= female.
         CO_base : float, optional
             Initial cardiac output. The default is 6.5L/min.
@@ -86,9 +86,9 @@ class Patient:
 
         # Init PK models for propofol and remifentanil
         self.PropoPK = PKmodel(age, height, weight, gender, self.lbm,
-                               drug="Propofol", Te=self.Ts, model=model_propo, random=Random_PK)
+                               drug="Propofol", Ts=self.Ts, model=model_propo, random=Random_PK)
         self.RemiPK = PKmodel(age, height, weight, gender, self.lbm,
-                              drug="Remifentanil", Te=self.Ts, model=model_remi, random=Random_PK)
+                              drug="Remifentanil", Ts=self.Ts, model=model_remi, random=Random_PK)
 
         # Init PD model for BIS
         self.BisPD = Bismodel(
@@ -101,9 +101,14 @@ class Patient:
                                  CO_param=[3, 12, 4.5, 4.5, -0.5, 0.4],
                                  MAP_param=[3.5, 17.1, 3, 4.56, -0.5, -1],
                                  ke=[self.PropoPK.A[3][0]/2, self.RemiPK.A[3][0]/2],
-                                 Te=self.Ts)
+                                 Ts=self.Ts)
 
-    def one_step(self, uP: float = 0, uR: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
+        # Init NMB model
+        self.nmb_pkpd = NMB_PKPD(Ts=self.Ts)
+        # Init RASS model
+        self.rass_model = Rassmodel(Ts=self.Ts)
+
+    def one_step(self, uP: float = 0, uR: float = 0, uA: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
         """
         Simulate one step time of the patient.
 
@@ -113,6 +118,8 @@ class Patient:
             Propofol infusion rate (mg/s). The default is 0.
         uR : float, optional
             Remifentanil infusion rate (µg/s). The default is 0.
+        uA : float, optional
+            Atracium infusion rate (µg/s). The default is 0.
         Dist : list, optional
             Disturbance vector on [BIS (%), MAP (mmHg), CO (L/min)]. The default is [0]*3.
         noise : bool, optional
@@ -124,14 +131,18 @@ class Patient:
             [BIS, MAP, CO] : current BIS (%), MAP (mmHg) ,and CO (L/min)
 
         """
-        # Hemodynamic
-        [self.CO, self.MAP] = self.Hemo.one_step(self.PropoPK.x[0], self.RemiPK.x[0])
 
         # compute PK model
         [self.Cp_blood, self.Cp_ES] = self.PropoPK.one_step(uP)
         [self.Cr_blood, self.Cr_ES] = self.RemiPK.one_step(uR)
+        self.NMB = self.nmb_pkpd.one_step(ua=uA, cer=self.Cr_ES)
+
         # BIS
-        self.BIS = self.BisPD.compute_bis(self.Cp_ES[0], self.Cr_ES[0])
+        self.BIS = self.BisPD.compute_bis(self.Cp_ES, self.Cr_ES)
+        # RASS
+        self.RASS = self.rass_model.one_step(cer=self.Cr_ES)
+        # Hemodynamic
+        [self.CO, self.MAP] = self.Hemo.one_step(self.PropoPK.x[0], self.RemiPK.x[0])
 
         # disturbances
         self.BIS += Dist[0]
@@ -149,4 +160,4 @@ class Patient:
             self.MAP += np.random.normal(scale=0.5)
             self.CO += np.random.normal(scale=0.1)
 
-        return([self.BIS, self.CO, self.MAP])
+        return([self.BIS, self.CO, self.MAP, self.RASS, self.NMB])
