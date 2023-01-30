@@ -498,7 +498,7 @@ class Bismodel:
             U_50 = 1 - self.beta * (Phi - Phi**2)
             interaction = (up + ur)/U_50
         bis = self.E0 - self.Emax * interaction ** self.gamma / (1 + interaction ** self.gamma)
-        return np.clip(bis, a_max=100, a_min=0)
+        return np.clip(bis, a_max=100, a_min=0)[0]
 
     def inverse_hill(self, BIS: float, cer: float = 0) -> float:
         """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration.
@@ -583,7 +583,7 @@ class Rassmodel:
                    self.k0)  # the value "15" come from the OPEN source latlab simulator of Ionescu et al.
         self.x = np.dot(self.sys.A, self.x) + np.dot(self.sys.B, u)
         rass = np.dot(self.sys.C, self.x) + np.dot(self.sys.D, u)
-        return rass
+        return rass[0, 0]
 
 
 class NMB_PKPD:
@@ -653,7 +653,7 @@ class NMB_PKPD:
         self.ce = np.dot(self.sys.C, self.x) + np.dot(self.sys.D, ua)
 
         nmb = 100 * Hill_function(self.ce, self.c50, self.gamma) - cer/3.4
-        return nmb
+        return nmb[0, 0]
 
 
 class Hemodynamics:
@@ -764,7 +764,7 @@ class Hemodynamics:
             Hill_function(self.CeP, self.C50_MAP_P, self.gamma_MAP_P) + self.Emax_MAP_R * \
             Hill_function(self.CeR, self.C50_MAP_R, self.gamma_MAP_R)
 
-        return (CO, MAP)
+        return (CO[0, 0], MAP[0, 0])
 
 
 # class PBPKmodel:
