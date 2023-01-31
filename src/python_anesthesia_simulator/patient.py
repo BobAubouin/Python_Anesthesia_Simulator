@@ -98,8 +98,6 @@ class Patient:
         # Ini Hemodynamic model
         self.Hemo = Hemodynamics(CO_init=CO_base,
                                  MAP_init=MAP_base,
-                                 CO_param=[3, 12, 4.5, 4.5, -0.5, 0.4],
-                                 MAP_param=[3.5, 17.1, 3, 4.56, -0.5, -1],
                                  ke=[self.PropoPK.A[3][0]/2, self.RemiPK.A[3][0]/2],
                                  Ts=self.Ts)
 
@@ -108,7 +106,8 @@ class Patient:
         # Init RASS model
         self.rass_model = Rassmodel(Ts=self.Ts)
 
-    def one_step(self, uP: float = 0, uR: float = 0, uA: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
+    def one_step(self, uP: float = 0, uR: float = 0, uA: float = 0, uS: float = 0, uD: float = 0,
+                 Dist: list = [0]*3, noise: bool = True) -> list:
         """
         Simulate one step time of the patient.
 
@@ -131,7 +130,6 @@ class Patient:
             [BIS, MAP, CO] : current BIS (%), MAP (mmHg) ,and CO (L/min)
 
         """
-
         # compute PK model
         [self.Cp_blood, self.Cp_ES] = self.PropoPK.one_step(uP)
         [self.Cr_blood, self.Cr_ES] = self.RemiPK.one_step(uR)
@@ -142,7 +140,8 @@ class Patient:
         # RASS
         self.RASS = self.rass_model.one_step(cer=self.Cr_ES)
         # Hemodynamic
-        [self.CO, self.MAP] = self.Hemo.one_step(self.PropoPK.x[0], self.RemiPK.x[0])
+        [self.CO, self.MAP] = self.Hemo.one_step(CP_blood=self.PropoPK.x[0], CR_blood=self.RemiPK.x[0],
+                                                 uD=uD, uS=uS/self.weight)
 
         # disturbances
         self.BIS += Dist[0]

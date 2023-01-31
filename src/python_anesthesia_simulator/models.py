@@ -516,9 +516,31 @@ class Bismodel:
             Effect site Propofol concentration (µg/mL).
 
         """
-        effect = 1-BIS/self.emax
-        interaction = (effect/(1 - effect))**(1/self.gamma)
-        return (interaction - cer/self.c50r)/(1/self.c50p + self.sigma*cer/(self.c50r*self.c50p))
+        if self.beta is None:  # Simple model
+            effect = 1-BIS/self.emax
+            interaction = (effect/(1 - effect))**(1/self.gamma)
+            cep = (interaction - cer/self.c50r)/(1/self.c50p + self.sigma*cer/(self.c50r*self.c50p))
+
+        else:  # Complete model
+            temp = (max(0, self.E0-BIS)/(self.Emax-self.E0+BIS))**(1/self.gamma)
+            Yr = cer / self.C50r
+            b = 3*Yr - temp
+            c = 3*Yr**2 - (2 - self.beta) * Yr * temp
+            d = Yr**3 - Yr**2*temp
+
+            p = np.poly1d([1, b, c, d])
+
+            real_root = 0
+            try:
+                for el in np.roots(p):
+                    if np.real(el) == el and np.real(el) > 0:
+                        real_root = np.real(el)
+                        break
+                cep = real_root*self.c50p
+            except:
+                print('bug')
+
+        return cep
 
     def plot_surface(self):
         """Plot the 3D surface of the BIS related to Propofol and Remifentanil effect site concentration."""
@@ -652,7 +674,7 @@ class NMB_PKPD:
         self.x = np.dot(self.sys.A, self.x) + np.dot(self.sys.B, ua)
         self.ce = np.dot(self.sys.C, self.x) + np.dot(self.sys.D, ua)
 
-        nmb = 100 * Hill_function(self.ce, self.c50, self.gamma) - cer/3.4
+        nmb = 100 * Hill_function(self.ce, self.c50, self.gamma) - (cer/(3.4))
         return nmb[0, 0]
 
 
@@ -660,12 +682,16 @@ class Hemodynamics:
     """Class to modelize the effect of Drugs on the Hemodynamic system."""
 
     def __init__(self,
-                 CO_init: float,
-                 MAP_init: float,
-                 CO_param: list,
-                 MAP_param: list,
                  ke: list,
-                 Ts: float = 1) -> list:
+                 CO_init: float = 5,
+                 MAP_init: float = 80,
+                 CO_param: list = [3, 12, 4.5, 4.5, -0.5, 0.4],
+                 MAP_param: list = [3.5, 17.1, 3, 4.56, -0.5, -1],
+                 Ts: float = 1,
+                 p11: list = [5, 300, 60],
+                 p12: list = [3, 40, 60],
+                 p21: list = [12, 150, 50],
+                 p22: list = [-15, 40, 50]) -> list:
         """
         Init the class.
 
@@ -733,7 +759,36 @@ class Hemodynamics:
         self.CeP = 0
         self.CeR = 0
 
-    def one_step(self, CP_blood: float, CR_blood: float) -> (float, float):
+        # Model of Dopamin and Sodium Nitroprusside
+        # Dopamine to CO
+        self.g11 = control.tf(p11[0], [p11[1], 1])  # ml/µg
+        self.g11 = control.sample_system(self.g11, self.Ts)
+        self.g11.den[0][0] = np.array([1, self.g11.den[0][0][1]] + [0]*int(p11[2]/Ts))  # adding delay
+        self.A11, self.B11, self.C11, self.D11 = control.ssdata(self.g11)
+        self.x11 = np.zeros((len(self.A11), 1))
+
+        # Dopamine to MAP
+        self.g12 = control.tf(p12[0], [p12[1], 1])  # mmHg.kg.min/µg
+        self.g12 = control.sample_system(self.g12, self.Ts)
+        self.g12.den[0][0] = np.array([1, self.g12.den[0][0][1]] + [0]*int(p12[2]/Ts))  # adding delay
+        self.A12, self.B12, self.C12, self.D12 = control.ssdata(self.g12)
+        self.x12 = np.zeros((len(self.A12), 1))
+
+        # SNP to CO
+        self.g21 = control.tf(p21[0], [p21[1], 1])  # ml/µg
+        self.g21 = control.sample_system(self.g21, self.Ts)
+        self.g21.den[0][0] = np.array([1, self.g21.den[0][0][1]] + [0]*int(p21[2]/Ts))  # adding delay
+        self.A21, self.B21, self.C21, self.D21 = control.ssdata(self.g21)
+        self.x21 = np.zeros((len(self.A21), 1))
+
+        # SNP to MAP
+        self.g22 = control.tf(p22[0], [p22[1], 1])  # mmHg.kg.min/µg
+        self.g22 = control.sample_system(self.g22, self.Ts)
+        self.g22.den[0][0] = np.array([1, self.g22.den[0][0][1]] + [0]*int(p22[2]/Ts))  # adding delay
+        self.A22, self.B22, self.C22, self.D22 = control.ssdata(self.g22)
+        self.x22 = np.zeros((len(self.A22), 1))
+
+    def one_step(self, CP_blood: float, CR_blood: float, uD: float = 0, uS: float = 0) -> (float, float):
         """
         Simulate one step time of the hemodynamic system.
 
@@ -743,6 +798,10 @@ class Hemodynamics:
             Propofol blood concentration (µg/mL).
         CR_blood : float
             Remifentanil blood concentration (µg/mL).
+        uD: float
+            Dopamine drug rate µg/s. Default is 0µg/s.
+        uS: float
+            Sodium Nitroprusside drug rate µg/s/kg. Default is 0.
 
         Returns
         -------
@@ -755,14 +814,26 @@ class Hemodynamics:
         # Dynamic system
         self.CeP = self.AP_d*self.CeP + self.BP_d * CP_blood
         self.CeR = self.AR_d*self.CeR + self.BR_d * CR_blood
+        self.x11 = self.A11 @ self.x11 + self.B11 * uD
+        self.x12 = self.A12 @ self.x12 + self.B12 * uD
+        self.x21 = self.A21 @ self.x21 + self.B21 * uS
+        self.x22 = self.A22 @ self.x22 + self.B22 * uS
 
         # Hill functions
-        CO = self.CO_init + self.Emax_CO_P * \
-            Hill_function(self.CeP, self.C50_CO_P, self.gamma_CO_P) + self.Emax_CO_R * \
-            Hill_function(self.CeR, self.C50_CO_R, self.gamma_CO_R)
-        MAP = self.MAP_init + self.Emax_MAP_P * \
-            Hill_function(self.CeP, self.C50_MAP_P, self.gamma_MAP_P) + self.Emax_MAP_R * \
-            Hill_function(self.CeR, self.C50_MAP_R, self.gamma_MAP_R)
+
+        Propo_CO = self.Emax_CO_P * Hill_function(self.CeP, self.C50_CO_P, self.gamma_CO_P)
+        Remi_CO = self.Emax_CO_R * Hill_function(self.CeR, self.C50_CO_R, self.gamma_CO_R)
+        Dop_CO = self.C11 @ self.x11 + self.D11 * uD
+        Snp_CO = self.C21 @ self.x21 + self.D21 * uS
+
+        Propo_MAP = self.Emax_MAP_P * Hill_function(self.CeP, self.C50_MAP_P, self.gamma_MAP_P)
+        Remi_MAP = self.Emax_MAP_R * Hill_function(self.CeR, self.C50_MAP_R, self.gamma_MAP_R)
+        Dop_MAP = self.C12 @ self.x12 + self.D12 * uD
+        Snp_MAP = self.C22 @ self.x22 + self.D22 * uS
+
+        # Compute output
+        CO = self.CO_init + Propo_CO + Remi_CO + Dop_CO + Snp_CO
+        MAP = self.MAP_init + Propo_MAP + Remi_MAP + Dop_MAP + Snp_MAP
 
         return (CO[0, 0], MAP[0, 0])
 
