@@ -47,11 +47,17 @@ In addition of being way faster than clinical test, simulation also allow the re
 With the Python Anesthesia Simulator we proposed a full pipeline to test control methods for drug dosage in anesthesia. By using *Pyhton*, an open-source language, we hope that everyone will be able to use our simulator. If the control community have been historically using MATLAB we believed that the use of python is not a big step. Moreover, the use of the control package [@fullerPythonControlSystems2021] make the transition even easier with Matlab compatibility functions. 
 
 In addition to all the model available to link drugs to their effect some usefull functionalities are available in PAS:
+
 - The uncertainties associated with Pharmacokinetic (PK) and Pharmacodynamic (PD) models are available to model inter-patient variability;
+
 - Initialization of the patient simulator at maintenance phase (equilirbium point) is possible.
+
 - As this simulator also include hemodynamics, the cardiac output can be used to actualize the PK models as proposed in @bienertInfluenceCardiacOutput2020;
+
 - A blood loss scenario is available to test the controllers in extrem conditions;
+
 - Standard additive disturbance profiles used in the literature are available;
+
 -  Control metric computation is directly available in the package.
 
 # Model information
@@ -61,6 +67,7 @@ In PAS all drugs effect are described by the well know Pharmacokinetic-Pharmacod
 ## Pharmacokinetic
 
 The standard way to model Pharmacokinetic of drugs is to used compartments model. Both Propofol and Remifentanil have been studied in many clinical trials and 3-comparments model is considered as the standard way to model those drugs parmacokinetics and also the way it is implemented in PAS.  Population The different population model available are listed beloow:
+
 - For Propofol: Schnider @schniderInfluenceAgePropofol1999, @marshPharmacokineticModelDriven1991, Marsh model with modified time constant for the effect site compartment @struysComparisonPlasmaCompartment2000,  @schuttlerPopulationPharmacokineticsPropofol2000 and  @eleveldPharmacokineticPharmacodynamicModel2018.
 
 - For Remifentanil: @mintoInfluenceAgeGender1997 and @eleveldAllometricModelRemifentanil2017.
@@ -81,10 +88,15 @@ The standard way to model pharmacodynamics is to consider a delay between a rise
 For BIS and TOL, PAS include 3D hill curves to model the synergical effect of Propofol and Remifentanil with the value from @bouillonPharmacodynamicInteractionPropofol2004. 
 
 For MAP and CO, the interaction between drugs have not been studied yet. Thus the effect of each drug is added to obtain the overall treatment effect:
+
 - For Propofol the value from
+
 - For Remifentanil
+
 - For Epinephrine
+
 - For Norepinephrine
+
 
 # Future development
 Many impovement can be imagine to develop PAS:
