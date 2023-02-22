@@ -26,7 +26,7 @@ affiliations:
  - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, VERIMAG, 38000 Grenoble, France
    index: 2
 date: 22 February 2022
-bibliography: paper/bibli.bib
+bibliography: bibli.bib
 ---
 
 # Summary
