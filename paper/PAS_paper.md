@@ -48,7 +48,6 @@ In addition of being way faster than clinical test, simulation also allow the re
 
 With the Python Anesthesia Simulator we proposed a full pipeline to test control methods for drug dosage in anesthesia. By using *Pyhton*, an open-source language, we hope that everyone will be able to use our simulator. In addition to all the model available to link Drugs to their effect some functionalities are added:
 
-
 - More population models are available to describe the pharmacokinetics of Propofol and Remifentanil, especially the ones proposed by Eleveld and co-authors in @eleveldPharmacokineticPharmacodynamicModel2018}and @eleveldAllometricModelRemifentanil2017;
 - The uncertainties associated with Propofol and Remifentanil PK-PD models are available to model inter-patient variability;
 - As this simulator also include hemodynamics, the cardiac output can be used to actualize the PK models as proposed in @bienertInfluenceCardiacOutput2020;
