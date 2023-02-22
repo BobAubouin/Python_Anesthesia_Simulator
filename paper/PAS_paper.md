@@ -8,13 +8,14 @@ tags:
   - Test pipeline
 authors:
   - name: Bob Aubouin--Pairault
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0003-0029-438X
     corresponding: true
     affiliation: "1, 2" # (Multiple affiliations must be quoted)
   - name: Mirko Fiacchini
+	orcid: 0000-0002-3601-0302
 	affiliation: 1
   - name: Thao Dang
-     # (This is how to denote the corresponding author)
+	orcid: 0000-0002-3637-1415
     affiliation: 2
 affiliations:
  - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, GIPSA-lab, 38000 Grenoble, France, {bob.aubouin-pairault, mirko.fiacchini}@gipsa-lab.fr
@@ -22,7 +23,7 @@ affiliations:
  - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, VERIMAG, 38000 Grenoble, France, thao.dang@univ-grenoble-alpes.fr
    index: 2
 date: 22 February 2022
-bibliography: bibli.bib
+bibliography: paper/bibli.bib
 
 
 # Summary
