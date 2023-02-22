@@ -100,10 +100,15 @@ For MAP and CO, the interaction between drugs have not been studied yet. Thus th
 
 # Future development
 Many impovement can be imagine to develop PAS:
-- Other drugs or model could be added
+
+- Other drugs or model could be added.
+
 - A more physiological model for hemodynamic system could be proposed to better link CO and MAP and eventually add Heart Rate as an output variable.
+
 - The Respiratory system could be included to include new variables.
+
 - New schock scenarios could be implemented to test our controller on diverse environment.
+
 Input from the community is welcome, in particular to implement physiological models which is not the authors speciality. We also hope that the code of the controller tested on PAS will be released in an open-source manner.
 
 ## Conclusion
