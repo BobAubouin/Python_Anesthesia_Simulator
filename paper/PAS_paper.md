@@ -11,16 +11,19 @@ authors:
     orcid: 0000-0003-0029-438X
     corresponding: true
     affiliation: "1, 2" # (Multiple affiliations must be quoted)
+    email: bob.aubouin-pairault@gipsa-lab.fr
   - name: Mirko Fiacchini
 	orcid: 0000-0002-3601-0302
 	affiliation: 1
+	email: mirko.fiacchini@gipsa-lab.fr
   - name: Thao Dang
 	orcid: 0000-0002-3637-1415
     affiliation: 2
+    email: thao.dang@univ-grenoble-alpes.fr
 affiliations:
- - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, GIPSA-lab, 38000 Grenoble, France, {bob.aubouin-pairault, mirko.fiacchini}@gipsa-lab.fr
+ - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, GIPSA-lab, 38000 Grenoble, France
    index: 1
- - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, VERIMAG, 38000 Grenoble, France, thao.dang@univ-grenoble-alpes.fr
+ - name: Univ. Grenoble Alpes, CNRS, Grenoble INP, VERIMAG, 38000 Grenoble, France
    index: 2
 date: 22 February 2022
 bibliography: paper/bibli.bib
