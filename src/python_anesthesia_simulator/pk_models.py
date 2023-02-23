@@ -1,6 +1,7 @@
-"""Includes class for different PK and PD drug models.
+"""Includes class for different PK models.
 
-@author: Aubouin--Pairault Bob 2023"""
+@author: Aubouin--Pairault Bob 2023, bob.aubouin@tutanota.com
+"""
 
 # Standard import
 import copy
@@ -8,29 +9,12 @@ import copy
 # Third party imports
 import numpy as np
 import control
-from matplotlib import pyplot as plt
-from matplotlib import cm
-from scipy.stats import truncnorm
-
-# Local imports
-
-
-def truncated_normal(mean=0, sd=1, low=0, upp=10):
-    """Generate a random float number from a a truncate dnormal distribution."""
-    return truncnorm(
-        (low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd).rvs()
-
-
-def Hill_function(x: float, x_50: float, gamma: float):
-    """Modelize Simple Hill function."""
-    return x**gamma/(x_50**gamma + x**gamma)
 
 
 class PK_model:
     """PKmodel class modelize the PK model of propofol or remifentanil drug."""
 
-    def __init__(self, age: float, height: float,
-                 weight: float, sex: bool, lbm: float,
+    def __init__(self, Patient_characteristic: list, lbm: float,
                  drug: str, model: str = None, Ts: float = 1,
                  random: bool = False, x0: list = None,
                  opiate=True, measurement="arterial"):
@@ -39,14 +23,8 @@ class PK_model:
 
         Parameters
         ----------
-        age : float
-            in year.
-        height : float
-            in cm.
-        weight : float
-            in kg.
-        sex : bool
-            1=male, 0= female.
+        Patient_characteristic: list
+            Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
         lbm : float
             lean body mass index.
         drug : str
@@ -74,7 +52,10 @@ class PK_model:
 
         """
         self.Ts = Ts
-
+        age = Patient_characteristic[0]
+        height = Patient_characteristic[1]
+        weight = Patient_characteristic[2]
+        gender = Patient_characteristic[3]
         if drug == "Propofol":
             if model is None:
                 model = 'Schnider'
@@ -88,74 +69,95 @@ class PK_model:
                 cl2 = 1.29 - 0.024 * (age - 53)
                 cl3 = 0.836
                 # Volume of the compartmente [l]
-                self.v1 = 4.27
+                v1 = 4.27
                 v2 = 18.9 - 0.391 * (age - 53)
                 v3 = 238
-                # drug amount transfer rates [1/min]
-                ke0 = 0.456
-                k1e = 0.456
 
                 # variability
-                cv_v1 = self.v1*0.0404
+                cv_v1 = v1*0.0404
                 cv_v2 = v2*0.01
                 cv_v3 = v3*0.1435
                 cv_cl1 = cl1*0.1005
                 cv_cl2 = cl2*0.01
                 cv_cl3 = cl3*0.1179
-                cv_ke = ke0*0.42  # The real value seems to be not available in the article
+                # estimation of log normal standard deviation
+                w_v1 = np.sqrt(np.log(1+cv_v1**2))
+                w_v2 = np.sqrt(np.log(1+cv_v2**2))
+                w_v3 = np.sqrt(np.log(1+cv_v3**2))
+                w_cl1 = np.sqrt(np.log(1+cv_cl1**2))
+                w_cl2 = np.sqrt(np.log(1+cv_cl2**2))
+                w_cl3 = np.sqrt(np.log(1+cv_cl3**2))
 
             elif model == 'Marsh_initial' or model == 'Marsh_modified':
                 # see B. Marsh, M. White, N. morton, and G. N. C. Kenny,
                 # “Pharmacokinetic model Driven Infusion of Propofol in Children,”
                 # BJA: British Journal of Anaesthesia, vol. 67, no. 1, pp. 41–48, Jul. 1991, doi: 10.1093/bja/67.1.41.
 
-                self.v1 = 0.228 * weight
+                v1 = 0.228 * weight
                 v2 = 0.463 * weight
                 v3 = 2.893 * weight
-                cl1 = 0.119 * self.v1
-                cl2 = 0.112 * self.v1
-                cl3 = 0.042 * self.v1
-                if model == 'Marsh_initial':
-                    ke0 = 0.26
-                elif model == 'Marsh_modified':
-                    ke0 = 1.2
-
-                k1e = ke0
+                cl1 = 0.119 * v1
+                cl2 = 0.112 * v1
+                cl3 = 0.042 * v1
 
                 # variability
-                cv_v1 = self.v1
-                cv_v2 = v2
-                cv_v3 = v3
-                cv_cl1 = cl1
-                cv_cl2 = cl2
-                cv_cl3 = cl3
-                cv_ke = ke0
+                # estimation of log normal standard deviation
+                # not given in the paper so estimated at 100% for each variable
+                w_v1 = np.sqrt(np.log(1+1**2))
+                w_v2 = np.sqrt(np.log(1+1**2))
+                w_v3 = np.sqrt(np.log(1+1**2))
+                w_cl1 = np.sqrt(np.log(1+1**2))
+                w_cl2 = np.sqrt(np.log(1+1**2))
+                w_cl3 = np.sqrt(np.log(1+1**2))
 
             elif model == 'Schuttler':
                 # J. Schüttler and H. Ihmsen, “Population Pharmacokinetics of Propofol: A Multicenter Study,”
                 # Anesthesiology, vol. 92, no. 3, pp. 727–738, Mar. 2000, doi: 10.1097/00000542-200003000-00017.
 
-                self.v1 = 9.3 * (weight/70)**0.71 * (age/30)**(-0.39)
-                v2 = 44.2 * (weight/70)**0.61
-                v3 = 266
+                theta = [None,  # just to get same index than in the paper
+                         1.44,  # Cl1 [l/min]
+                         9.3,  # v1ref [l]
+                         2.25,  # Cl2 [l/min]
+                         44.2,  # v2ref [l]
+                         0.92,  # Cl3 [l/min]
+                         266,  # v3ref [l]
+                         0.75,
+                         0.62,
+                         0.61,
+                         0.045,
+                         0.55,
+                         0.71,
+                         -0.39,
+                         -0.40,
+                         1.61,
+                         2.02,
+                         0.73,
+                         -0.48]
+
+                v1 = theta[2] * (weight/70)**theta[12] * (age/30)**theta[13]
+                v2 = theta[4] * (weight/70)**theta[9]
+                v3 = theta[6]
                 if age <= 60:
-                    cl1 = 1.44 * (weight/70)**0.75
+                    cl1 = theta[1] * (weight/70)**theta[7]
                 else:
-                    cl1 = 1.44 * (weight/70)**0.75 - (age-60)*0.045
-                cl2 = 2.25 * (weight/70)**0.62*0.6
-                cl3 = 0.92 * (weight/70)**0.55
-                # no PD model so we reuse schuttler one
-                ke0 = 1.2
-                k1e = ke0
+                    cl1 = theta[1] * (weight/70)**theta[7] - (age-60)*theta[10]
+                cl2 = theta[3] * (weight/70)**theta[8]
+                cl3 = theta[5] * (weight/70)**theta[11]
 
                 # variability
-                cv_v1 = self.v1*0.400
-                cv_v2 = v2*0.548
-                cv_v3 = v3*0.469
-                cv_cl1 = cl1*0.374
-                cv_cl2 = cl2*0.516
-                cv_cl3 = cl3*0.509
-                cv_ke = ke0*1.01
+                cv_v1 = 0.400
+                cv_v2 = 0.548
+                cv_v3 = 0.469
+                cv_cl1 = 0.374
+                cv_cl2 = 0.519
+                cv_cl3 = 0.509
+                # estimation of log normal standard deviation
+                w_v1 = np.sqrt(np.log(1+cv_v1**2))
+                w_v2 = np.sqrt(np.log(1+cv_v2**2))
+                w_v3 = np.sqrt(np.log(1+cv_v3**2))
+                w_cl1 = np.sqrt(np.log(1+cv_cl1**2))
+                w_cl2 = np.sqrt(np.log(1+cv_cl2**2))
+                w_cl3 = np.sqrt(np.log(1+cv_cl3**2))
 
             elif model == 'Eleveld':
                 # see D. J. Eleveld, P. Colin, A. R. Absalom, and M. M. R. F. Struys,
@@ -208,7 +210,7 @@ class PK_model:
                 fCLmat_ref = fsig(PMA_ref*52, theta[8], theta[9])
                 fQ3mat = fsig(PMA * 52, theta[14], 1)
                 fQ3mat_ref = fsig(PMA_ref * 52, theta[14], 1)
-                fsal = fal_sallami(sex, weight, age, BMI)
+                fsal = fal_sallami(gender, weight, age, BMI)
                 fsal_ref = fal_sallami(GDR_ref, WGT_ref, AGE_ref, BMI_ref)
 
                 if opiate:
@@ -218,14 +220,14 @@ class PK_model:
 
                 # reference: male, 70kg, 35 years and 170cm
 
-                self.v1 = theta[1] * fcentral(weight)/fcentral(WGT_ref)
+                v1 = theta[1] * fcentral(weight)/fcentral(WGT_ref)
                 if measurement == "venous":
-                    self.v1 = self.v1 * (1 + theta[17] * (1 - fcentral(weight)))
+                    v1 = v1 * (1 + theta[17] * (1 - fcentral(weight)))
                 v2 = theta[2] * weight/WGT_ref * faging(theta[10])
                 v2ref = theta[2]
                 v3 = theta[3] * fsal/fsal_ref * fopiate(theta[13])
                 v3ref = theta[3]
-                cl1 = (sex*theta[4] + (1-sex)*theta[15]) * (weight/WGT_ref)**0.75 * \
+                cl1 = (gender*theta[4] + (1-gender)*theta[15]) * (weight/WGT_ref)**0.75 * \
                     fCLmat/fCLmat_ref * fopiate(theta[11])
 
                 cl2 = theta[5]*(v2/v2ref)**0.75 * (1 + theta[16] * (1 - fQ3mat))
@@ -234,22 +236,21 @@ class PK_model:
 
                 cl3 = theta[6] * (v3/v3ref)**0.75 * fQ3mat/fQ3mat_ref
 
-                ke0 = 0.146*(weight/70)**(-0.25)
-                k1e = ke0
-                self.sigma = 0
-                self.gamma = (1.89+1.47)/2
-                self.c50p = 3.08*faging(-0.00635)
-                self.c50r = 15
-                self.emax = 93
-
-                # variability
-                cv_v1 = self.v1*0.917
+                # Coeff variability
+                cv_v1 = v1*0.917
                 cv_v2 = v2*0.871
                 cv_v3 = v3*0.904
                 cv_cl1 = cl1*0.551
                 cv_cl2 = cl2*0.643
                 cv_cl3 = cl3*0.482
-                cv_ke = ke0*1.01
+
+                # log normal Variance
+                w_v1 = np.sqrt(0.610)
+                w_v2 = np.sqrt(0.565)
+                w_v3 = np.sqrt(0.597)
+                w_cl1 = np.sqrt(0.265)
+                w_cl2 = np.sqrt(0.346)
+                w_cl3 = np.sqrt(0.209)
 
         elif drug == "Remifentanil":
             if model is None:
@@ -265,22 +266,24 @@ class PK_model:
                 cl3 = 0.076 - 0.00113 * (age - 40)
 
                 # Volume of the compartmente [l]
-                self.v1 = 5.1 - 0.0201 * (age-40) + 0.072 * (lbm - 55)
+                v1 = 5.1 - 0.0201 * (age-40) + 0.072 * (lbm - 55)
                 v2 = 9.82 - 0.0811 * (age-40) + 0.108 * (lbm-55)
                 v3 = 5.42
-                # drug amount transfer rates [1/min]
-                ke0 = 0.595 - 0.007 * (age - 40)
-                k1e = ke0  # 0.456
-                self.c50r = 13.1 - 0.148*(age-40)
 
                 # variability
-                cv_v1 = self.v1*0.26
-                cv_v2 = v2*0.29
-                cv_v3 = v3*0.66
-                cv_cl1 = cl1*0.14
-                cv_cl2 = cl2*0.36
-                cv_cl3 = cl3*0.41
-                cv_ke = ke0*0.68
+                cv_v1 = 0.26
+                cv_v2 = 0.29
+                cv_v3 = 0.66
+                cv_cl1 = 0.14
+                cv_cl2 = 0.36
+                cv_cl3 = 0.41
+                # estimation of log normal standard deviation
+                w_v1 = np.sqrt(np.log(1+cv_v1**2))
+                w_v2 = np.sqrt(np.log(1+cv_v2**2))
+                w_v3 = np.sqrt(np.log(1+cv_v3**2))
+                w_cl1 = np.sqrt(np.log(1+cv_cl1**2))
+                w_cl2 = np.sqrt(np.log(1+cv_cl2**2))
+                w_cl3 = np.sqrt(np.log(1+cv_cl3**2))
 
             elif model == 'Eleveld':
                 # see D. J. Eleveld et al., “An Allometric Model of Remifentanil Pharmacokinetics and Pharmacodynamics,”
@@ -306,7 +309,7 @@ class PK_model:
 
                 BMI = weight/(height/100)**2
 
-                SIZE = (fal_sallami(sex, weight, age, BMI)/fal_sallami(GDR_ref, WGT_ref, AGE_ref, BMI_ref))
+                SIZE = (fal_sallami(gender, weight, age, BMI)/fal_sallami(GDR_ref, WGT_ref, AGE_ref, BMI_ref))
 
                 theta = [None,      # Juste to have the same index as in the paper
                          2.88,
@@ -318,13 +321,13 @@ class PK_model:
 
                 KMAT = fsig(weight, theta[1], 2)
                 KMATref = fsig(WGT_ref, theta[1], 2)
-                if sex:
+                if gender:
                     KSEX = 1
                 else:
                     KSEX = 1+theta[5]*fsig(age, 12, 6)*(1-fsig(age, 45, 6))
 
                 v1ref = 5.81
-                self.v1 = v1ref * SIZE * faging(theta[2])
+                v1 = v1ref * SIZE * faging(theta[2])
                 V2ref = 8.882
                 v2 = V2ref * SIZE * faging(theta[3])
                 V3ref = 5.03
@@ -335,21 +338,26 @@ class PK_model:
                 cl1 = cl1ref * SIZE**0.75 * (KMAT/KMATref)*KSEX*faging(theta[3])
                 cl2 = cl2ref * (v2/V2ref)**0.75 * faging(theta[2]) * KSEX
                 cl3 = cl3ref * (v3/V3ref)**0.75 * faging(theta[2])
-                ke0 = 1.09 * faging(-0.0289)
-                k1e = ke0
 
                 # variability
-                cv_v1 = self.v1*0.33
+                cv_v1 = v1*0.33
                 cv_v2 = v2*0.35
                 cv_v3 = v3*1.12
                 cv_cl1 = cl1*0.14
                 cv_cl2 = cl2*0.237
                 cv_cl3 = cl3*0.575
-                cv_ke = ke0*1.26
+
+                # log normal standard deviation
+                w_v1 = np.sqrt(0.104)
+                w_v2 = np.sqrt(0.115)
+                w_v3 = np.sqrt(0.810)
+                w_cl1 = np.sqrt(0.0197)
+                w_cl2 = np.sqrt(0.0547)
+                w_cl3 = np.sqrt(0.285)
 
         elif drug == 'Epinephrine':
             # see
-            self.v1 = None
+            v1 = None
             cl1 = None  # L/min
 
             w_v1 = None
@@ -360,7 +368,7 @@ class PK_model:
             # in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
             # vol. 95, no. 6, pp. 782–788, Dec. 2005, doi: 10.1093/bja/aei259.
 
-            self.v1 = 8.840
+            v1 = 8.840
             cl1 = 2  # suppose SAPS II = 30 ()
 
             w_v1 = 1.63
@@ -368,20 +376,20 @@ class PK_model:
 
         if drug == 'Propofol' or drug == 'Remifentanil':
             # drug amount transfer rates [1/min]
-            self.k10 = cl1 / self.v1
-            self.k12 = cl2 / self.v1
-            self.k13 = cl3 / self.v1
+            k10 = cl1 / v1
+            k12 = cl2 / v1
+            k13 = cl3 / v1
             k21 = cl2 / v2
             k31 = cl3 / v3
 
             # Nominal Matrices system definition
-            self.A_nom = np.array([[-(self.k10 + self.k12 + self.k13), k21, k31],
-                                   [self.k12, -k21, 0],
-                                   [self.k13, 0, -k31]])/60  # 1/s
+            A_nom = np.array([[-(k10 + k12 + k13), k21, k31],
+                              [k12, -k21, 0],
+                              [k13, 0, -k31]])/60  # 1/s
 
-            self.B_nom = np.transpose(np.array([[1/self.v1, 0, 0, 0]]))  # 1/L
-            self.C = np.array([[1, 0, 0, 0, ], [0, 0, 0, 1]])
-            self.D = np.array([[0], [0]])
+            B_nom = np.transpose(np.array([[1/v1, 0, 0]]))  # 1/L
+            C = np.array([[1, 0, 0]])
+            D = np.array([[0]])
 
             # Introduce inter-patient variability
             if random is True:
@@ -389,57 +397,50 @@ class PK_model:
                     print("Warning: the standard deviation of the Marsh model are not know," +
                           " it is set to 100% for each variable")
 
-                self.v1 = truncated_normal(mean=self.v1, sd=cv_v1,
-                                           low=self.v1/4, upp=self.v1*4)
-                cl2 = truncated_normal(mean=cl2, sd=cv_cl2, low=cl2/4, upp=cl2*4)
-                cl3 = truncated_normal(mean=cl3, sd=cv_cl3, low=cl3/4, upp=cl3*4)
-                self.k10 = truncated_normal(
-                    mean=cl1, sd=cv_cl1, low=cl1/4, upp=cl1*4) / self.v1
-                self.k12 = cl2 / self.v1
-                self.k13 = cl3 / self.v1
-                k21 = cl2 / truncated_normal(mean=v2, sd=cv_v2, low=v2/4, upp=v2*4)
-                k31 = cl3 / truncated_normal(mean=v3, sd=cv_v3, low=v3/4, upp=v3*4)
-                ke0 = truncated_normal(mean=ke0, sd=cv_ke, low=ke0/4, upp=ke0*4)
-                k1e = ke0
-                self.A = np.array([[-(self.k10 + self.k12 + self.k13), k21, k31, 0],
-                                   [self.k12, -k21, 0, 0],
-                                   [self.k13, 0, -k31, 0],
-                                   [k1e, 0, 0, -ke0]]) / 60  # 1/s
-                self.B = np.transpose(np.array([[1/self.v1, 0, 0, 0]]))  # 1/L
+                v1 *= np.exp(np.random.normal(scale=w_v1))
+                v2 *= np.exp(np.random.normal(scale=w_v2))
+                v3 *= np.exp(np.random.normal(scale=w_v3))
+                cl1 *= np.exp(np.random.normal(scale=w_cl1))
+                cl2 *= np.exp(np.random.normal(scale=w_cl2))
+                cl3 *= np.exp(np.random.normal(scale=w_cl3))
+
+                A = np.array([[-(k10 + k12 + k13), k21, k31],
+                              [k12, -k21, 0],
+                              [k13, 0, -k31]])/60  # 1/s
+                B = np.transpose(np.array([[1/v1, 0, 0]]))  # 1/L
             else:
-                self.A = self.A_nom
-                self.B = self.B_nom
+                A = A_nom
+                B = B_nom
         elif drug == 'Epinephrine' or drug == 'Norepinephrine':
             # drug amount transfer rates [1/min]
-            self.k10 = cl1 / self.v1
+            k10 = cl1 / v1
 
             # Nominal Matrices system definition
-            self.A_nom = np.array(-self.k10)/60  # 1/s
+            A_nom = np.array(-k10)/60  # 1/s
 
-            self.B_nom = np.array(1/self.v1)  # 1/L
-            self.C = np.array(1)
-            self.D = np.array(0)
+            B_nom = np.array(1/v1)  # 1/L
+            C = np.array(1)
+            D = np.array(0)
             if random is True:
-                self.v1 = truncated_normal(mean=self.v1, sd=cv_v1,
-                                           low=self.v1/4, upp=self.v1*4)
-                cl2 = truncated_normal(mean=cl2, sd=cv_cl2, low=cl2/4, upp=cl2*4)
+                v1 *= np.exp(np.random.normal(scale=w_v1))
+                cl1 *= np.exp(np.random.normal(scale=w_cl1))
 
-                self.A = np.array(-self.k10)/60  # 1/s
-                self.B = np.array(1/self.v1)  # 1/L
+                A = np.array(-k10)/60  # 1/s
+                B = np.array(1/v1)  # 1/L
             else:
-                self.A = self.A_nom
-                self.B = self.B_nom
+                A = A_nom
+                B = B_nom
 
         # Continuous system with blood concentration as output
-        self.continuous_sys = control.ss(self.A, self.B, self.C, self.D)
+        self.continuous_sys = control.ss(A, B, C, D)
         # Discretization of the system
         self.discretize_sys = self.continuous_sys.sample(self.Ts)
 
         # init output
         if x0 is None:
-            x0 = np.ones(len(self.A))*1e-3
+            x0 = np.zeros(len(A))  # np.ones(len(A))*1e-3
         self.x = x0
-        self.y = np.dot(self.C, self.x)
+        self.y = np.dot(C, self.x)
 
     def one_step(self, u: float) -> list:
         """Simulate one step of PK model.
@@ -459,7 +460,7 @@ class PK_model:
         self.y = self.discretize_sys.output(0, self.x, u=u)  # first input is ignored
         return self.y
 
-    def update_coeff_CO(self, CO_ratio: float):
+    def update_param_CO(self, CO_ratio: float):
         """Update PK coefficient with a linear function of Cardiac output value.
 
         Parameters
@@ -480,14 +481,14 @@ class PK_model:
         # Discretization of the system
         self.discretize_sys = self.continuous_sys.sample(self.Ts)
 
-    def update_coeff_blood_loss(self, v_loss: float):
+    def update_param_blood_loss(self, v_loss_ratio: float):
         """Update PK coefficient to mimic a blood loss.
 
         Updaate the blodd volume compartment
         Parameters
         ----------
         v_loss : float
-            loss volume as a fraction of loss, 0 mean no loss, 1 mean 100% loss.
+            loss volume as a fraction of total volume, 0 mean no loss, 1 mean 100% loss.
 
         Returns
         -------
@@ -496,12 +497,11 @@ class PK_model:
         """
         Bnew = copy.deepcopy(self.B)
         Anew = copy.deepcopy(self.A)
-        new_v1 = self.v1 * (1 - v_loss[0, 0])
 
-        Anew[0][0] /= (1 - v_loss)
-        Anew[1][0] /= (1 - v_loss)
-        Anew[2][0] /= (1 - v_loss)
-        Bnew *= self.v1 / new_v1
+        Anew[0][0] /= (1 - v_loss_ratio)
+        Anew[1][0] /= (1 - v_loss_ratio)
+        Anew[2][0] /= (1 - v_loss_ratio)
+        Bnew /= (1 - v_loss_ratio)
 
         # Continuous system with blood concentration as output
         self.continuous_sys = control.ss(Anew, Bnew, self.C, self.D)
