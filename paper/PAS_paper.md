@@ -1,5 +1,5 @@
 ---
-title: 'PAS: a Python Anesthesia Simulator for the control community'
+title: 'PAS: a Python Anesthesia Simulator for drug control'
 tags:
   - Python
   - Anesthesia
@@ -31,7 +31,7 @@ bibliography: bibli.bib
 
 # Summary
 
-The Python Anesthesia Simulator (PAS) models the effect of drug on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrugs controller. The available drugs are Propofol, Remifentanil, Epinephrine and Norepinephrine and the ouputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO) and Tolerance of Laryngoscopy (TOL). PAS includes differents well know models along with their uncertainties in order to simulate interpatient variability. Blood loss can also be simulated to assess the controller performances on a schock scenario. Finally PAS includes standard disturbance profil and metrics computation to facilitate the evaluation of controllers performances.
+The Python Anesthesia Simulator (PAS) models the effect of drug on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrugs controller. The available drugs are Propofol, Remifentanil, Epinephrine and Norepinephrine and the ouputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO) and Tolerance of Laryngoscopy (TOL). PAS includes differents well known models along with their uncertainties in order to simulate interpatient variability. Blood loss can also be simulated to assess the controller performances on a schock scenario. Finally PAS includes standard disturbance profils and metrics computation to facilitate the evaluation of controllers performances.
 
 # Statement of need
 
@@ -112,10 +112,10 @@ Many impovement can be imagine to develop PAS:
 Input from the community is welcome, in particular to implement physiological models which is not the authors speciality. We also hope that the code of the controller tested on PAS will be released in an open-source manner.
 
 ## Conclusion
-As shown in the available examples included in PAS, many functions are implemented to help furtur resarch on drug control during anesthesia. This simulator provide a full pipeline to design and test on a wide variety of scenario multidrugs controller.
+As shown in the available examples included in PAS, many functions are implemented to help furtur resarch on drug control during anesthesia. This simulator provide a full pipeline to design and test multidrugs controller on a wide variety of scenarios.
 
 # Acknowledgements
 
-This work has been partially supported by the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01) funded by the *French program Investissement d’avenir*. The authors also wants to thanks Mathias Reus for his help on practical Python programming and packaging.
+This work has been partially supported by the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01) funded by the *French program Investissement d’avenir*. The authors also wants to thanks Mathias Réus for his help on practical Python programming and packaging.
 
 # References
