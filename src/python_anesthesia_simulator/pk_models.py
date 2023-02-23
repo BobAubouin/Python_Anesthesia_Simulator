@@ -15,7 +15,7 @@ class PK_model:
     """PKmodel class modelize the PK model of propofol or remifentanil drug."""
 
     def __init__(self, Patient_characteristic: list, lbm: float,
-                 drug: str, model: str = None, Ts: float = 1,
+                 drug: str, model: str = None, ts: float = 1,
                  random: bool = False, x0: list = None,
                  opiate=True, measurement="arterial"):
         """
@@ -33,7 +33,7 @@ class PK_model:
             Could be "Minto", "Eleveld" for Remifentanil,
             "Schnider", "Marsh_initial", "Marsh_modified", "Shuttler" or "Eleveld" for Propofol.
             The default is "Minto" for Remifentanil and "Schnider" for Propofol.
-        Ts : float, optional
+        ts : float, optional
             Sampling time, in s. The default is 1.
         random : bool, optional
             bool to introduce uncertainties in the model. The default is False.
@@ -51,7 +51,7 @@ class PK_model:
         None.
 
         """
-        self.Ts = Ts
+        self.ts = ts
         age = Patient_characteristic[0]
         height = Patient_characteristic[1]
         weight = Patient_characteristic[2]
@@ -434,7 +434,7 @@ class PK_model:
         # Continuous system with blood concentration as output
         self.continuous_sys = control.ss(A, B, C, D)
         # Discretization of the system
-        self.discretize_sys = self.continuous_sys.sample(self.Ts)
+        self.discretize_sys = self.continuous_sys.sample(self.ts)
 
         # init output
         if x0 is None:
@@ -479,7 +479,7 @@ class PK_model:
         # Continuous system with blood concentration as output
         self.continuous_sys = control.ss(Anew, self.B, self.C, self.D)
         # Discretization of the system
-        self.discretize_sys = self.continuous_sys.sample(self.Ts)
+        self.discretize_sys = self.continuous_sys.sample(self.ts)
 
     def update_param_blood_loss(self, v_loss_ratio: float):
         """Update PK coefficient to mimic a blood loss.
@@ -506,4 +506,4 @@ class PK_model:
         # Continuous system with blood concentration as output
         self.continuous_sys = control.ss(Anew, Bnew, self.C, self.D)
         # Discretization of the system
-        self.discretize_sys = self.continuous_sys.sample(self.Ts)
+        self.discretize_sys = self.continuous_sys.sample(self.ts)

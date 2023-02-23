@@ -10,11 +10,14 @@ from matplotlib import pyplot as plt
 from matplotlib import cm
 
 
+def fsig(x, C50, gam): return x**gam/(C50**gam + x**gam)  # quick definition of sigmoidal function
+
+
 class BIS_PD_model:
     """efect site +Hill curv model to link Propofol and Remifentanil blood concentration to BIS."""
 
     def __init__(self, weight: float, age: int, compartment_model: list = [None]*2, Hill_model: str = 'Bouillon',
-                 ke0: list = [None]*2, hill_param: list = [None]*6, random: bool = False, Ts: float = 1):
+                 ke0: list = [None]*2, hill_param: list = [None]*6, random: bool = False, ts: float = 1):
         """
         Init the class.
 
@@ -43,7 +46,7 @@ class BIS_PD_model:
             The default is [None]*6.
         random : bool, optional
             Add uncertainties in the parameters. Ignored if Hill_cruv is specified. The default is False.
-        Ts : float, optional
+        ts : float, optional
             Sampling time, in s. The default is 1.
 
         Returns
@@ -128,14 +131,14 @@ class BIS_PD_model:
 
         self.continuous_prop = control.ss(-ke0[0], ke0[0], 1, 0)
         self.continuous_remi = control.ss(-ke0[1], ke0[1], 1, 0)
-        self.discret_prop = self.continuous_prop.sample(Ts)
-        self.discret_remi = self.continuous_remi.sample(Ts)
-        self.cep = 0
-        self.cer = 0
+        self.discret_prop = self.continuous_prop.sample(ts)
+        self.discret_remi = self.continuous_remi.sample(ts)
+        self.c_es_propo = 0  # Propofol effect site concentration
+        self.c_es_remi = 0  # Remifentanil effect site concentration
         self.hill_param = [self.c50p, self.c50r, self.gamma, self.beta, self.E0, self.Emax]
         self.c50p_init = self.c50p  # for blood loss modelling
 
-    def hill_curve(self, cep: float, cer: float) -> float:
+    def hill_curve(self, c_es_propo: float, c_es_remi: float) -> float:
         """Compute BIS function from Propofol and Remifentanil effect site concentration.
 
         Parameters
@@ -151,8 +154,8 @@ class BIS_PD_model:
             Bis value.
 
         """
-        up = cep / self.c50p
-        ur = cer / self.c50r
+        up = c_es_propo / self.c50p
+        ur = c_es_remi / self.c50r
         Phi = up/(up + ur + 1e-6)
         U_50 = 1 - self.beta * (Phi - Phi**2)
         interaction = (up + ur)/U_50
@@ -160,7 +163,7 @@ class BIS_PD_model:
 
         return bis
 
-    def one_step(self, cpp: float, cpr: float) -> float:
+    def one_step(self, c_blood_propo: float, c_blood_remi: float) -> float:
         """
         Compute one step of the Pharmacodynamic system.
 
@@ -177,9 +180,9 @@ class BIS_PD_model:
             Cureent bis value.
 
         """
-        self.cep = self.discret_prop(None, self.cep, cpp)  # first input is ignored
-        self.cer = self.discret_remi(None, self.cer, cpr)  # first input is ignored
-        bis = self.hill_curve(self.cep, self.cer)
+        self.c_es_propo = self.discret_prop(None, self.cep, c_blood_propo)  # first input is ignored
+        self.c_es_remi = self.discret_remi(None, self.cer, c_blood_remi)  # first input is ignored
+        bis = self.hill_curve(self.c_es_propo, self.c_es_remi)
         return bis
 
     def update_param_blood_loss(self, v_loss_ratio: float):
@@ -325,7 +328,12 @@ class TOL_PD_model():
             TOL value.
 
         """
-        def fsig(x, C50, gam): return x**gam/(C50**gam + x**gam)
         post_opioid = self.pre_intensity * (1 - fsig(cer, self.c50r*self.pre_intensity, self.gamma_r))
         tol = 1 - fsig(cep, self.c50p*post_opioid, self.gamma_p)
         return tol
+
+
+class Hemo_PD_model():
+    """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Meanrterial pressure and Cardiac Output."""
+
+    def __init__(self, )

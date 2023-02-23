@@ -18,17 +18,17 @@ class Patient:
     """Define a Patient class able to simulate Anesthesia process."""
 
     def __init__(self,
-                 Patient_characteristic: list,
-                 CO_base: float = 6.5,
-                 MAP_base: float = 90,
+                 patient_characteristic: list,
+                 co_base: float = 6.5,
+                 map_base: float = 90,
                  model_propo: str = 'Schnider',
                  model_remi: str = 'Minto',
-                 Ts: float = 1,
+                 ts: float = 1,
                  hill_param: list = [None]*6,
                  random_PK: bool = False,
                  random_PD: bool = False,
-                 CO_update: bool = False,
-                 save_data: bool = False):
+                 co_update: bool = False,
+                 save_data: bool = True):
         """
         Initialise a patient class for anesthesia simulation.
 
@@ -36,15 +36,15 @@ class Patient:
         ----------
         Patient_characteristic: list
             Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
-        CO_base : float, optional
+        co_base : float, optional
             Initial cardiac output. The default is 6.5L/min.
-        MAP_base : float, optional
+        map_base : float, optional
             Initial Mean Arterial Pressure. The default is 90mmHg.
         model_propo : str, optional
             Name of the Propofol PK Model. The default is 'Schnider'.
         model_remi : str, optional
             Name of the Remifentanil PK Model. The default is 'Minto'.
-        Ts : float, optional
+        ts : float, optional
             Samplling time (s). The default is 1.
         BIS_param : list, optional
             Parameter of the BIS model (Propo Remi interaction)
@@ -54,7 +54,7 @@ class Patient:
             Add uncertainties in the Propodfol and Remifentanil PK models. The default is False.
         random_PD : bool, optional
             Add uncertainties in the BIS PD model. The default is False.
-        CO_update : bool, optional
+        co_update : bool, optional
             Turn on the option to update PK parameters thanks to the CO value. The default is False.
 
         Returns
@@ -62,19 +62,19 @@ class Patient:
         None.
 
         """
-        self.age = Patient_characteristic[0]
-        self.height = Patient_characteristic[1]
-        self.weight = Patient_characteristic[2]
-        self.gender = Patient_characteristic[3]
-        self.CO_init = CO_base
-        self.MAP_init = MAP_base
-        self.Ts = Ts
+        self.age = patient_characteristic[0]
+        self.height = patient_characteristic[1]
+        self.weight = patient_characteristic[2]
+        self.gender = patient_characteristic[3]
+        self.co_base = co_base
+        self.map_base = map_base
+        self.ts = ts
         self.model_propo = model_propo
         self.model_remi = model_remi
         self.hill_param = hill_param
         self.random_PK = random_PK
         self.random_PD = random_PD
-        self.CO_update = CO_update
+        self.co_update = co_update
         self.save_data = save_data
 
         # LBM computation
@@ -85,17 +85,17 @@ class Patient:
 
         # Init PK models for all drugs
         if 'Marsh' in model_propo:
-            self.propo_pk = PK_model(Patient_characteristic, self.lbm, drug="Propofol",
-                                     Ts=self.Ts, model='Marsh', random=random_PK)
+            self.propo_pk = PK_model(patient_characteristic, self.lbm, drug="Propofol",
+                                     ts=self.ts, model='Marsh', random=random_PK)
         else:
-            self.propo_pk = PK_model(Patient_characteristic, self.lbm, drug="Propofol",
-                                     Ts=self.Ts, model=model_propo, random=random_PK)
+            self.propo_pk = PK_model(patient_characteristic, self.lbm, drug="Propofol",
+                                     ts=self.ts, model=model_propo, random=random_PK)
 
-        self.remi_pk = PK_model(Patient_characteristic, self.lbm, drug="Remifentanil",
-                                Ts=self.Ts, model=model_remi, random=random_PK)
+        self.remi_pk = PK_model(patient_characteristic, self.lbm, drug="Remifentanil",
+                                ts=self.ts, model=model_remi, random=random_PK)
 
-        self.nore_pk = PK_model(Patient_characteristic, self.lbm, drug="Norepinephrine",
-                                Ts=self.Ts, model=model_remi, random=random_PK)
+        self.nore_pk = PK_model(patient_characteristic, self.lbm, drug="Norepinephrine",
+                                ts=self.ts, model=model_remi, random=random_PK)
 
         # Init PD model for BIS
         self.bis_pd = BIS_PD_model(self.weight, self.age, compartment_model=[model_propo, model_remi],
@@ -105,11 +105,11 @@ class Patient:
         # Init PD model for TOL
         self.tol_pd = TOL_PD_model(model='Bouillon', random=random_PD)
 
-        # Ini Hemodynamic model
+        # Init Hemodynamic model
         self.Hemo = Hemodynamics(CO_init=CO_base,
                                  MAP_init=MAP_base,
                                  ke=[self.PropoPK.A[3][0]/2, self.RemiPK.A[3][0]/2],
-                                 Ts=self.Ts)
+                                 ts=self.ts)
 
         # init blood loss constant
         self.blood_loss_tf = control.tf([1], [60, 1])
@@ -123,6 +123,13 @@ class Patient:
         self.x_v_trans = 0
         self.v_trans = 0
 
+        # Init all the output variable
+        self.bis = self.bis_pd.hill_curve(0, 0)
+        self.tol = self.tol_pd.hill_curve(0, 0)
+        self.map = map_base
+        self.co = co_base
+
+        # Save data ?
         if self.save_data:
             # Time variable which will be stored
             self.Time = 0
@@ -142,21 +149,21 @@ class Patient:
 
             self.dataframe = pd.DataFrame(columns=column_names)
 
-    def one_step(self, uP: float = 0, uR: float = 0, uA: float = 0, uS: float = 0, uD: float = 0,
+    def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0, uS: float = 0, uD: float = 0,
                  Dist: list = [0]*3, noise: bool = True) -> list:
         """
         Simulate one step time of the patient.
 
         Parameters
         ----------
-        uP : float, optional
+        u_propo : float, optional
             Propofol infusion rate (mg/s). The default is 0.
-        uR : float, optional
+        u_remi : float, optional
             Remifentanil infusion rate (µg/s). The default is 0.
-        uA : float, optional
-            Atracium infusion rate (µg/s). The default is 0.
+        u_nore : float, optional
+            Norepinephrine infusion rate (µg/s). The default is 0.
         uS : float, optional
-            Sodium Nitroprucide rate (µg/s). The default is 0.
+            Sodium Nitroprucide rate (mg/s). The default is 0.
         uD : float, optional
             Dopamine rate (µg/s). The defauls is 0.
         Dist : list, optional
@@ -171,15 +178,13 @@ class Patient:
 
         """
         # compute PK model
-        self.propo_pk =
-
+        self.c_blood_propo = self.propo_pk.one_step(u_propo)
+        self.c_blood_remi = self.remi_pk.one_step(u_remi)
+        self.c_blood_nore = self.nore_pk.one_step(u_nore)
         # BIS
-        self.BIS = self.BisPD.compute_bis(self.Cp_ES, self.Cr_ES)
-
-        # NMN
-        self.NMB = self.nmb_pkpd.one_step(ua=uA, cer=self.Cr_ES)
-        # RASS
-        self.RASS = self.rass_model.one_step(cer=self.Cr_ES)
+        self.bis = self.bis_pd.one_step(self.c_blood_propo, self.c_blood_remi)
+        # TOL
+        self.tol = self.tol_pd.one_step(self.bis_pd.c_es_propo, self.bis_pd.c_es_remi)
         # Hemodynamic
         [self.CO, self.MAP] = self.Hemo.one_step(CP_blood=self.PropoPK.x[0], CR_blood=self.RemiPK.x[0],
                                                  uD=uD, uS=uS/self.weight)
@@ -190,40 +195,43 @@ class Patient:
         self.CO += Dist[2]
 
         # update PK model with CO
-        if self.CO_update:
-            self.PropoPK.update_coeff_CO(self.CO, self.CO_init)
-            self.RemiPK.update_coeff_CO(self.CO, self.CO_init)
+        if self.co_update:
+            self.propo_pk.update_param_CO(self.CO/self.CO_init)
+            self.remi_pk.update_param_CO(self.CO/self.CO_init)
+            self.nore_pk.update_param_CO(self.CO/self.CO_init)
 
         # add noise
         if noise:
             self.BIS += np.random.normal(scale=3)
             self.MAP += np.random.normal(scale=0.5)
             self.CO += np.random.normal(scale=0.1)
-            if self.save_data:
-                # compute time
-                self.Time += self.Ts
-                # store data
 
-                new_line = {'Time': self.Time,
-                            'BIS': self.BIS, 'RASS': self.RASS, 'MAP': self.MAP, 'CO': self.CO, 'NMB': self.NMB,  # outputs
-                            'u_propo': uP, 'u_remi': uR, 'u_dopamine': uD, 'u_snp': uS, 'u_atracium': uA,  # inputs
-                            'x_nmb': self.nmb_pkpd.x[0, 0], 'x_rass': self.rass_model.x[0, 0],  # x nmb, rass
-                            'x_hemo_c_propo': self.Hemo.CeP[0, 0], 'x_hemo_c_remi': self.Hemo.CeR[0, 0]}  # hemo
+        # Save data ?
+        if self.save_data:
+            # compute time
+            self.Time += self.ts
+            # store data
 
-                line_x_propo = {'x_propo_' + str(i+1): self.PropoPK.x[i, 0] for i in range(4)}
-                line_x_remi = {'x_remi_' + str(i+1): self.RemiPK.x[i, 0] for i in range(4)}
-                line_x_g11 = {'x_hemo_g11_' + str(i+1): self.Hemo.x11[i, 0] for i in range(len(self.Hemo.x11))}
-                line_x_g12 = {'x_hemo_g12_' + str(i+1): self.Hemo.x12[i, 0] for i in range(len(self.Hemo.x12))}
-                line_x_g21 = {'x_hemo_g21_' + str(i+1): self.Hemo.x21[i, 0] for i in range(len(self.Hemo.x21))}
-                line_x_g22 = {'x_hemo_g22_' + str(i+1): self.Hemo.x22[i, 0] for i in range(len(self.Hemo.x22))}
-                new_line.update(line_x_propo)
-                new_line.update(line_x_remi)
-                new_line.update(line_x_g11)
-                new_line.update(line_x_g12)
-                new_line.update(line_x_g21)
-                new_line.update(line_x_g22)
+            new_line = {'Time': self.Time,
+                        'BIS': self.bis, 'TOL': self.tol, 'MAP': self.map, 'CO': self.co,  # outputs
+                        'u_propo': u_propo, 'u_remi': u_remi, 'u_nore': u_nore, 'u_snp': uS,  # inputs
+                        'c_blood_nore': self.c_blood_nore,   # x nmb, rass
+                        'x_hemo_c_propo': self.Hemo.CeP[0, 0], 'x_hemo_c_remi': self.Hemo.CeR[0, 0]}  # hemo
 
-                self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line)), ignore_index=True)
+            line_x_propo = {'x_propo_' + str(i+1): self.PropoPK.x[i, 0] for i in range(4)}
+            line_x_remi = {'x_remi_' + str(i+1): self.RemiPK.x[i, 0] for i in range(4)}
+            line_x_g11 = {'x_hemo_g11_' + str(i+1): self.Hemo.x11[i, 0] for i in range(len(self.Hemo.x11))}
+            line_x_g12 = {'x_hemo_g12_' + str(i+1): self.Hemo.x12[i, 0] for i in range(len(self.Hemo.x12))}
+            line_x_g21 = {'x_hemo_g21_' + str(i+1): self.Hemo.x21[i, 0] for i in range(len(self.Hemo.x21))}
+            line_x_g22 = {'x_hemo_g22_' + str(i+1): self.Hemo.x22[i, 0] for i in range(len(self.Hemo.x22))}
+            new_line.update(line_x_propo)
+            new_line.update(line_x_remi)
+            new_line.update(line_x_g11)
+            new_line.update(line_x_g12)
+            new_line.update(line_x_g21)
+            new_line.update(line_x_g22)
+
+            self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line)), ignore_index=True)
 
         return([self.BIS, self.CO, self.MAP, self.RASS, self.NMB])
 
