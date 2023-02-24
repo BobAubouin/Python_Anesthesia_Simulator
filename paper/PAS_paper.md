@@ -31,30 +31,30 @@ bibliography: bibli.bib
 
 # Summary
 
-The Python Anesthesia Simulator (PAS) models the effect of drug on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrugs controller. The available drugs are Propofol, Remifentanil, Epinephrine and Norepinephrine and the ouputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO) and Tolerance of Laryngoscopy (TOL). PAS includes differents well known models along with their uncertainties in order to simulate interpatient variability. Blood loss can also be simulated to assess the controller performances on a schock scenario. Finally PAS includes standard disturbance profils and metrics computation to facilitate the evaluation of controllers performances. The statement of need of this package is first discuss, then some model information are provided to the user. The furtur development of the package are discuss at the end.
+The Python Anesthesia Simulator (PAS) models the effect of drugs on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrug controllers. The available drugs are Propofol, Remifentanil, Epinephrine, and Norepinephrine, the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO), and Tolerance of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate inter-patient variability. Blood loss can also be simulated to assess the controller performance in a shock scenario. Finally, PAS includes standard disturbance profiles and metrics computation to facilitate the evaluation of controllers performances. The statement of need of this package is first discussed, then some model informations are provided to the reader. The future developments of the package are discussed at the end.
 
 # Statement of need
 
-Closing the loop for drug dosage during general anesthesia is a challenging task which keeps the attention of the control community for more than two decades. In fact, the high need for reliability coupled with a highly uncertain system makes the design of a controller an arduous work. Thus, numerous closed-loop control strategies have been proposed, reviewed in @ilyasReviewModernControl2017, @copotAutomatedDrugDelivery2020, @singhArtificialIntelligenceAnesthesia2022 and @ghitaClosedLoopControlAnesthesia2020 for instance. 
+Closing the loop for drug dosage during general anesthesia is a challenging task which keeps the attention of the control community for more than two decades. In fact, the high need for reliability coupled with a highly uncertain system makes the design of a controller an arduous work. Thus, numerous closed-loop control strategies have been proposed and reviewed in @ilyasReviewModernControl2017, @copotAutomatedDrugDelivery2020, @singhArtificialIntelligenceAnesthesia2022, and @ghitaClosedLoopControlAnesthesia2020 for instance. 
 
 
-Because it is a long term process to clinically test a control method for drug injection, a lot of papers only rely on simulations to demonstrate the advantages of their proposition. However, two meta-studies agree on the fact that automated control during anesthesia brings better stability to the physiological signals during the procedure @brogiClinicalPerformanceSafety2017, @puriMulticenterEvaluationClosedLoop2016. Since the methods were first tested on simulation and obtain then good performances in clinical situation it could be conclude that simulation are realistic enough to be used as a first test.
+Because it is a long-term process to clinically test a control method for drug injection, a lot of papers only rely on simulations to demonstrate the advantages of their proposition. However, two meta-studies agree on the fact that automated control during anesthesia brings better stability to the physiological signals during the procedure @brogiClinicalPerformanceSafety2017, @puriMulticenterEvaluationClosedLoop2016. Since the methods were first tested on simulation and obtained then good performances in clinical situations it could be concluded that simulations are realistic enough to be used as a first test.
 
 
-In addition of being way faster than clinical test, simulation also allow the researchers to used the same framework to compare their methods. Up to now, many different controllers have been proposed and tested on their own framework and it is often hard to compare them properly. This is made worse by the fact that the code of the algorithms is almost never open-source which makes hard the reproducibility of the results (to the authors knowledge @comanAnesthesiaGUIDEMATLABTool2022 is the only open-source controller for anesthesia). Ionescu *et al.* recently address this issue by providing an open-source anesthesia simulator to the community in @ionescuOpenSourcePatient2021a. If this this a first step to a FAIR (Findable, Accessible, Interoperable, Reusable) science, it can be improved. In fact, the measurement noise and disturbance scenarios are still not specified. Moreover, while the simulator could incorporate them, the level of uncertainty to take into account in the patient model is also not fixed. Finally, the metrics used to compare the performances must be explicit and used by all to compare our controls methods.
+In addition to being way faster than clinical tests, simulations also allow researchers to use the same framework to compare their methods. Up to now, many different controllers have been proposed and tested on their own framework and it is often hard to compare them properly. This is made worse by the fact that the code of the algorithms is rarely open-source which makes hard the reproducibility of the results (to the author's knowledge @comanAnesthesiaGUIDEMATLABTool2022 is the only open-source controller for anesthesia). Ionescu *et al.* recently address this issue by providing an open-source anesthesia simulator to the community in @ionescuOpenSourcePatient2021a. If this is a first step to a FAIR (Findable, Accessible, Interoperable, Reusable) science, it can be improved. In fact, the measurement noise and disturbance scenarios are still not specified. Moreover, while the simulator could incorporate them, the level of uncertainty to take into account in the patient model is also not fixed. Finally, the metrics used to compare the performances must be explicit and used by all to compare our control methods.
   
 
-With the Python Anesthesia Simulator we proposed a full pipeline to test control methods for drug dosage in anesthesia. By using *Pyhton*, an open-source language, we hope that everyone will be able to use our simulator. If the control community have been historically using MATLAB, the use of the control package [@fullerPythonControlSystems2021] in our simulator helps to transition with Matlab compatibility functions. Moreover, from a interdisciplinare point of view, Python is already widely used by the data-science and machine learning community. On the anesthesia topic, the database *VitalDB* [@leeVitalRecorderFree2018] have a Python API and could be used to propose data-based approach.
+With the Python Anesthesia Simulator, a full pipeline is proposed to test control methods for drug dosage in anesthesia. By using *Pyhton*, an open-source language, we hope that everyone will be able to use our simulator. If the control community has been historically using MATLAB, the use of the control package [@fullerPythonControlSystems2021] in PAS helps to transition, with Matlab compatibility functions. Moreover, from an interdisciplinary point of view, Python is already widely used by the data science and machine learning community. On the anesthesia topic, the database *VitalDB* [@leeVitalRecorderFree2018] has a Python API and could be used together with PAS to propose data-based approaches.
 
-In addition to all the model available to link drugs to their effect some usefull functionalities are available in PAS:
+In addition to all the models available to link drugs to their effect some useful functionalities are available in PAS:
 
 - The uncertainties associated with Pharmacokinetic (PK) and Pharmacodynamic (PD) models are available to model inter-patient variability;
 
-- Initialization of the patient simulator at maintenance phase (equilirbium point) is possible.
+- Initialization of the patient simulator at the maintenance phase (equilibrium point) is possible.
 
-- As this simulator also include hemodynamics, the cardiac output can be used to actualize the PK models as proposed in @bienertInfluenceCardiacOutput2020;
+- As this simulator also includes hemodynamics, the cardiac output can be used to actualize the PK models as proposed in @bienertInfluenceCardiacOutput2020;
 
-- A blood loss scenario is available to test the controllers in extrem conditions;
+- A blood loss scenario is available to test the controllers in extreme conditions;
 
 - Standard additive disturbance profiles used in the literature are available;
 
@@ -62,7 +62,7 @@ In addition to all the model available to link drugs to their effect some useful
 
 # Model information
 
-In PAS all drugs effect are described by the well know Pharmacokinetic-Pharmacodynamic (PK-PD) model. PK model are used to describe the distribution of drug in the body and PD model describe the effect of the drug on a specific output. Our simulator includes the most famous models allong with their uncertainties with a log-normal distribution for all the parameters. Uncertainties can be activated in PK and PD part separatly.
+In PAS all drugs effect are described by the well know Pharmacokinetic-Pharmacodynamic (PK-PD) model. PK models are used to describe the distribution of drugs in the body and PD models describe the effect of the drug on a specific output. Our simulator includes the most famous models along with their uncertainties with a log-normal distribution for all the parameters. Uncertainties can be activated in PK and PD parts separately.
 
 ## Pharmacokinetic
 
@@ -99,17 +99,19 @@ For MAP and CO, the interaction between drugs have not been studied yet. Thus th
 
 
 # Conclusion and Future development
-As shown in the available examples included in PAS, many functions are implemented to help furtur resarch on drug control during anesthesia. This package provides a full pipeline to design and test multidrugs controller on a wide variety of scenarios. For the future many impovement can be imagine to develop PAS:
+As shown in the available examples included in PAS, many functions are implemented to help further research on drug control during anesthesia. This package provides a full pipeline to design and test multidrug controllers on a wide variety of scenarios. In the future many improvements can be imagined to develop PAS:
 
-- Other drugs or model could be added.
+- Other drugs or models could be added;
 
-- A more physiological model for hemodynamic system could be proposed to better link CO and MAP and eventually add Heart Rate as an output variable.
+- Neuromuscular blockade system could be implemented as this is an important component of anesthesia paradigm;
 
-- The Respiratory system could be included to include new variables.
+- A more physiological model for the hemodynamic system could be proposed to better link CO and MAP and eventually add Heart Rate as an output variable;
 
-- New schock scenarios could be implemented to test our controller on diverse environment.
+- The Respiratory system could be included to include new variables;
 
-Input from the community is welcome, in particular to implement physiological models which is not the authors speciality. We also hope that the code of the controller tested on PAS will be released in an open-source manner.
+- New shock scenarios could be implemented to test our controller in a diverse environment.
+
+Input from the community is welcome, in particular, to implement a physiological model which is not the author's specialty. We also hope that the code of controllers tested on PAS will be released in an open-source manner.
 
 
 # Acknowledgements
