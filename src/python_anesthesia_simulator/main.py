@@ -8,10 +8,10 @@
 import numpy as np
 import control
 import pandas as pd
+import caadi as cas
 # Local imports
 from pk_models import PK_model
-from pd_model import BIS_PD_model, TOL_PD_model
-from .models import PKmodel, Bismodel, Hemodynamics, NMB_PKPD, Rassmodel, Hill_function
+from pd_model import BIS_PD_model, TOL_PD_model, fsig
 
 
 class Patient:
@@ -235,8 +235,8 @@ class Patient:
 
         return([self.BIS, self.CO, self.MAP, self.RASS, self.NMB])
 
-    def find_equilibrium(self, bis_target: float, rass_target: float, map_target: float,
-                         co_target: float, nmb_target: float = None) -> list:
+    def find_equilibrium(self, bis_target: float, tol_target: float, map_target: float,
+                         co_target: float) -> list:
         """
         Find the input to meet the targeted output at the equilibrium.
 
@@ -244,91 +244,77 @@ class Patient:
         ----------
         bis_target : float
             BIS target (%).
-        rass_target : float
-            RASS target ([0, -5]).
+        tol_target : float
+            TOL target ([0, 1]).
         map_target:float
             MAP target (mmHg).
         co_target : float
             CO target (L/min).
-        nmb_target : float, optional
-            NMB target (%). The default is None.
-
         Returns
         -------
         list
             list of input [up, ur, ud, us, ua] with the respective units [mg/s, µg/s, µg/s, µg/s, µg/s].
 
         """
-        # find Remifentanil from RASS
-        self.Cr_ES_eq = rass_target / control.dcgain(self.rass_model.sys) * \
-            (self.rass_model.k1 * 15 + self.rass_model.k0)
-        self.uR_eq = self.Cr_ES_eq / control.dcgain(self.RemiPK.sys)
+        # find Remifentanil and Propofol Concentration from BIS and TOL
+        cep = cas.MX('cep')  # effect site concentration of propofol in the optimization problem
+        cer = cas.MX('cer')  # effect site concentration of remifentanil in the optimization problem
+        # temp = (max(0, self.bis_pd.E0-bis_target)/(self.bis_pd.Emax-self.bis_pd.E0+bis_target))**(1/self.bis_pd.gamma)
 
-        # Find Propofol from BIS and Remifentanil
+        # Yp = cep / self.bis_pd.c50p
+        # Yr = cer / self.bis_pd.c50r
+        # b = 3*Yr - temp
+        # c = 3*Yr**2 - (2 - self.BisPD.beta) * Yr * temp
+        # d = Yr**3 - Yr**2*temp
 
-        temp = (max(0, self.BisPD.E0-bis_target)/(self.BisPD.Emax-self.BisPD.E0+bis_target))**(1/self.BisPD.gamma)
-        Yr = self.Cr_ES_eq / self.BisPD.c50r
-        b = 3*Yr - temp
-        c = 3*Yr**2 - (2 - self.BisPD.beta) * Yr * temp
-        d = Yr**3 - Yr**2*temp
+        # post_opioid = self.tol_pd.pre_intensity * (1 - fsig(cer, self.tol_pd.c50r*self.tol_pd.pre_intensity,
+        #                                                     self.tol_pd.gamma_r))
+        # tol = 1 - fsig(cep, self.tol_pd.c50p*post_opioid, self.tol_pd.gamma_p)
 
-        p = np.poly1d([1, b, c, d])
+        bis = self.bis_pd.hill_curve(cep, cer)
+        tol = self.tol_pd.one_step(cep, cer)
 
-        real_root = 0
-        try:
-            for el in np.roots(p):
-                if np.real(el) == el and np.real(el) > 0:
-                    real_root = np.real(el)
-                    break
-        except:
-            print('bug')
-        Yp = real_root
-        self.Cp_ES_eq = Yp * self.BisPD.c50p
+        J = (bis - bis_target)**2/100**2 + (tol - tol_target)**2
+        w = [cep, cer]
+        w0 = [self.bis_pd.c50p, self.bis_pd.c50r]
+        lbw = [0, 0]
+        ubw = [50, 50]
 
-        self.uP_eq = self.Cp_ES_eq / control.dcgain(self.PropoPK.sys)
+        opts = {'ipopt.print_level': 0, 'print_time': 0}
+        prob = {'f': J, 'x': cas.vertcat(*w)}
+        solver = cas.nlpsol('solver', 'ipopt', prob, opts)
+        sol = solver(x0=w0, lbx=lbw, ubx=ubw)
+        w_opt = sol['x'].full().flatten()
+        self.c_blood_propo_eq = w_opt[0]
+        self.c_blood_remi_eq = w_opt[1]
 
         # get Dopamine and Sodium nitroprusside from CO and MAP target
 
-        CO_propo = self.Hemo.Emax_CO_P * Hill_function(self.Cp_ES_eq, self.Hemo.C50_CO_P, self.Hemo.gamma_CO_P)
-        CO_remi = self.Hemo.Emax_CO_R * Hill_function(self.Cr_ES_eq, self.Hemo.C50_CO_R, self.Hemo.gamma_CO_R)
+        # update pharmacokinetics model from co value
+        if self.co_update:
+            self.propo_pk.update_param_CO(self.co_eq/self.co_base)
+            self.remi_pk.update_param_CO(self.co_eq/self.co_base)
+        # get rate input
+        self.u_propo_eq = self.c_blood_propo_eq / control.dcgain(self.propo_pk.continuous_sys)
+        self.u_remi_eq = self.c_blood_remi_eq / control.dcgain(self.remi_pk.continuous_sys)
 
-        MAP_propo = self.Hemo.Emax_MAP_P * Hill_function(self.Cp_ES_eq, self.Hemo.C50_MAP_P, self.Hemo.gamma_MAP_P)
-        MAP_remi = self.Hemo.Emax_MAP_R * Hill_function(self.Cr_ES_eq, self.Hemo.C50_MAP_R, self.Hemo.gamma_MAP_R)
+        return self.u_propo_eq, self.u_remi_eq
 
-        CO_delta_wanted = co_target - (self.CO_init + CO_propo + CO_remi)
-        MAP_delta_wanted = map_target - (self.MAP_init + MAP_propo + MAP_remi)
-
-        effect_matrix = [[control.dcgain(self.Hemo.g11), control.dcgain(self.Hemo.g21)],
-                         [control.dcgain(self.Hemo.g12), control.dcgain(self.Hemo.g22)]]
-
-        b = [[CO_delta_wanted],
-             [MAP_delta_wanted]]
-        sol = np.linalg.solve(np.array(effect_matrix), np.array(b))
-
-        self.uD_eq = sol[0]
-        self.uS_eq = sol[1]
-
-        if nmb_target is not None:
-            self.NMB_delta_wanted = nmb_target - self.Cr_ES_eq/3.4
-            self.Ca_eq = self.nmb_pkpd.c50 * (self.NMB_delta_wanted/(100 + self.NMB_delta_wanted))**(1/self.nmb_pkpd)
-            self.uA_eq = self.Ca_eq / control.dcgain(self.nmb_pkpd.tf)
-        else:
-            self.uA_eq = None
-
-        return self.uP_eq, self.uR_eq, self.uD_eq, self.uS_eq, self.uA_eq
-
-    def initialized_at_given_input(self, up: float = 0, ur: float = 0, ud: float = 0, us: float = 0, ua: float = 0):
+    def initialized_at_given_input(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
+                                   us: float = 0, ua: float = 0):
         """
         Initialize the patient Simulator at the given input as an equilibrium point.
 
         Parameters
         ----------
-        up : float, optional
+        u_propo : float, optional
             Propofol infusion rate (mg/s). The default is 0.
-        ur : float, optional
+        u_remi : float, optional
             Remifentanil infusion rate (µg/s). The default is 0.
-        ud : float, optional
-            Dopamine rate (µg/s). The defauls is 0.
+        u_nore : float, optional
+            Norepinephrine infusion rate (µg/s). The default is 0.
+        uS : float, optional
+            Sodium Nitroprucide rate (mg/s). The default is 0.
         us : float, optional
             Sodium Nitroprucide rate (µg/s). The default is 0.
         ua : float, optional
@@ -339,31 +325,29 @@ class Patient:
         None.
 
         """
-        self.uP_eq = up
-        self.uR_eq = ur
-        self.uD_eq = ud
+        self.u_propo_eq = u_propo
+        self.u_remi_eq = u_remi
+        self.u_nore_eq = u_nore
         self.uS_eq = us
         self.uA_eq = ua
 
-        self.Cp_ES_eq = up * control.dcgain(self.PropoPK.sys)
-        self.Cr_ES_eq = up * control.dcgain(self.RemiPK.sys)
+        self.c_blood_propo_eq = u_propo * control.dcgain(self.propo_pk.continuous_sys)
+        self.c_blood_remi_eq = u_remi * control.dcgain(self.remi_pk.continuous_sys)
+        self.c_blood_remi_eq = u_nore * control.dcgain(self.nore_pk.continuous_sys)
+
         # PK models
-        x_init_propo = np.linalg.solve(-self.PropoPK.A, self.PropoPK.B * self.uP_eq)
-        self.PropoPK.x = x_init_propo
+        x_init_propo = np.linalg.solve(-self.propo_pk.continuous_sys.A, self.propo_pk.continuous_sys.B * u_propo)
+        self.propo_pk.x = x_init_propo
 
-        x_init_remi = np.linalg.solve(-self.RemiPK.A, self.RemiPK.B * self.uR_eq)
-        self.RemiPK.x = x_init_remi
+        x_init_remi = np.linalg.solve(-self.remi_pk.continuous_sys.A, self.remi_pk.continuous_sys.B * u_propo)
+        self.remi_pk.x = x_init_remi
 
-        # RASS model
-        x_init_rass = np.linalg.solve(-(self.rass_model.sys.A - np.eye(len(self.rass_model.sys.A))),
-                                      self.rass_model.sys.B * self.Cr_ES_eq)
-        self.rass_model.x = x_init_rass
+        x_init_nore = np.linalg.solve(-self.nore_pk.continuous_sys.A, self.nore_pk.continuous_sys.B * u_nore)
+        self.u_nore.x = x_init_nore
 
-        # NMB model
-        if self.uA_eq is not None:
-            x_init_nmb = np.linalg.solve(-(self.nmb_pkpd.sys.A - np.eye(len(self.nmb_pkpd.sys.A))),
-                                         self.nmb_pkpd.sys.B * self.uA_eq)
-            self.nmb_pkpd.x = x_init_nmb
+        # Effect site models
+        self.bis_pd.c_es_propo = self.c_blood_propo_eq
+        self.bis_pd.c_es_remi = self.c_blood_remi_eq
 
         # Hemo dynamics
         self.Hemo.CeP = self.Cp_ES_eq
@@ -409,13 +393,13 @@ class Patient:
         """
         # Find equilibrium point
 
-        self.find_equilibrium(bis_target, rass_target, map_target, co_target, nmb_target)
+        self.find_equilibrium(bis_target, rass_target, map_target, co_target)
 
         # set them as starting point in the simulator
 
-        self.initialized_at_given_input(up=self.uP_eq,
-                                        ur=self.uR_eq,
-                                        ud=self.uD_eq,
+        self.initialized_at_given_input(u_propo=self.u_propo_eq,
+                                        u_remi=self.u_remi_eq,
+                                        u_nore=self.u_nore_eq,
                                         us=self.uS_eq,
                                         ua=self.uA_eq)
 

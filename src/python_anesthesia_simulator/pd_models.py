@@ -180,8 +180,8 @@ class BIS_PD_model:
             Cureent bis value.
 
         """
-        self.c_es_propo = self.discret_prop(None, self.cep, c_blood_propo)  # first input is ignored
-        self.c_es_remi = self.discret_remi(None, self.cer, c_blood_remi)  # first input is ignored
+        self.c_es_propo = self.discret_prop(None, self.c_es_propo, c_blood_propo)  # first input is ignored
+        self.c_es_remi = self.discret_remi(None, self.c_es_remi, c_blood_remi)  # first input is ignored
         bis = self.hill_curve(self.c_es_propo, self.c_es_remi)
         return bis
 
