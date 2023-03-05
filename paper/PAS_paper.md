@@ -31,7 +31,7 @@ bibliography: bibli.bib
 
 # Summary
 
-The Python Anesthesia Simulator (PAS) models the effect of drugs on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrug controllers. The available drugs are Propofol, Remifentanil, Epinephrine, and Norepinephrine, the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO), and Tolerance of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate inter-patient variability. Blood loss can also be simulated to assess the controller performance in a shock scenario. Finally, PAS includes standard disturbance profiles and metrics computation to facilitate the evaluation of controllers performances. The statement of need of this package is first discussed, then some model informations are provided to the reader. The future developments of the package are discussed at the end.
+The Python Anesthesia Simulator (PAS) models the effect of drugs on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrug controllers. The available drugs are Propofol, Remifentanil, and Norepinephrine, the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO), and Tolerance of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate inter-patient variability. Blood loss can also be simulated to assess the controller performance in a shock scenario. Finally, PAS includes standard disturbance profiles and metrics computation to facilitate the evaluation of controllers performances. The statement of need of this package is first discussed, then some model informations are provided to the reader. The future developments of the package are discussed at the end.
 
 # Statement of need
 
@@ -73,7 +73,7 @@ The standard way to model Pharmacokinetic of drugs is to used compartments model
 - For Remifentanil: @mintoInfluenceAgeGender1997 and @eleveldAllometricModelRemifentanil2017.
 
 
-For Norepinephrine and Epinephrine clinical trial are rarer and usually only one comparment is used to model the distribution of those drugs in blood. In PAS the model from @abboudPharmacokineticsEpinephrinePatients2009 for Epinephrine and @beloeilNorepinephrineKineticsDynamics2005 for Norepinephrine.
+For Norepinephrine clinical trial are rarer and usually only one comparment is used to model the distribution of those drugs in blood. In PAS the model from @beloeilNorepinephrineKineticsDynamics2005 is programmed.
 
 Several studies have shown the influence of Cardiac Output (CO) on the pharmacokinetic of Propofol [@uptonCardiacOutputDeterminant1999; @kuritaInfluenceCardiacOutput2002; @adachiDeterminantsPropofolInduction2001]. In @bienertInfluenceCardiacOutput2020 the authors proposed the assumption that the clearance rate of Propofol and Fentanil could be proportionnal to CO resulting in non-constant clearance rate. In the simulator the same assumption is made for the Propofol and extended to Remifentanil, Epinephrine and Norepinephrine clearance rates PK. It can be activated or desactivated to simulate the interaction between CO and the hypnotic system.
 
@@ -92,8 +92,6 @@ For MAP and CO, the interaction between drugs have not been studied yet. Thus th
 - For Propofol the value from where used for MAP. For CO, we chosed to not consider the effect of propofol sinced they are negligible [@dewitEffectPropofolHaemodynamics2016]. However the interaction programmed in the simulator and the value can be changed to model this interaction.
 
 - For Remifentanil 
-
-- For Epinephrine
 
 - For Norepinephrine the value from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance to the PK model. Here the default paramaters do not model an interaction between Norepinephrine and CO due to negligible impact [@pardoBasicsAnesthesiaEBook2017].
 
