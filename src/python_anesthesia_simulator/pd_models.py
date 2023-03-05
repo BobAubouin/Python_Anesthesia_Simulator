@@ -5,7 +5,6 @@
 
 # Third party imports
 import numpy as np
-import control
 from matplotlib import pyplot as plt
 from matplotlib import cm
 
@@ -13,27 +12,18 @@ from matplotlib import cm
 def fsig(x, C50, gam): return x**gam/(C50**gam + x**gam)  # quick definition of sigmoidal function
 
 
-class BIS_PD_model:
+class BIS_model:
     """efect site +Hill curv model to link Propofol and Remifentanil blood concentration to BIS."""
 
-    def __init__(self, weight: float, age: int, compartment_model: list = [None]*2, Hill_model: str = 'Bouillon',
-                 ke0: list = [None]*2, hill_param: list = [None]*6, random: bool = False, ts: float = 1):
+    def __init__(self, hill_model: str = 'Bouillon', hill_param: list = None,
+                 random: bool = False):
         """
         Init the class.
 
         Parameters
         ----------
-        weight: float
-            Weight in kilo, only used in Eleveld comparment model.
-        age: int
-            Age in yr, only used in Remifentanil model.
-        compartment_model: list, optionnal
-            Model to use for the effect site compartment time constant, must be choosen in agreement to the PK model.
-            The default is Schnider for Remifentanil and Minto fro Propofol. Ignored if ke0 is specified.
-        Hill_model : str, optional
+        hill_model : str, optional
             Only 'Bouillon' is available. Ignored if  is specified.
-        ke0 : list, optional
-            list of time constant of effect site compartment ke0 = ke0p, ke0r
         hill_param : list, optional
             Parameter of the Hill model (Propo Remi interaction)
             list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
@@ -43,7 +33,7 @@ class BIS_PD_model:
                 - beta_BIS : interaction coefficient for the BIS model,
                 - E0_BIS : initial BIS,
                 - Emax_BIS : max effect of the drugs on BIS.
-            The default is [None]*6.
+            The default is None.
         random : bool, optional
             Add uncertainties in the parameters. Ignored if Hill_cruv is specified. The default is False.
         ts : float, optional
@@ -54,35 +44,7 @@ class BIS_PD_model:
         None.
 
         """
-        if ke0 is None:
-            w_ke = [0, 0]
-            # Propofol models
-            if compartment_model[0] == 'Schnider' or compartment_model[0] is None:
-                ke0[0] = 0.456
-                cv_ke = 0.42
-                w_ke[0] = np.sqrt(np.log(1+cv_ke**2))
-            elif compartment_model[0] == 'Marsh_initial':
-                ke0[0] = 0.26
-                # not given in the paper so estimated at 100% for each variable
-                w_ke = np.sqrt(np.log(2))
-            elif compartment_model[0] == 'Marsh_modified':
-                ke0[0] = 1.2
-                # not given in the paper so estimated at 100% for each variable
-                w_ke[0] = np.sqrt(np.log(2))
-            elif compartment_model[0] == 'Eleveld':
-                ke0 = 0.146*(weight/70)**(-0.25)
-                w_ke[0] = 0.702
-
-            # Remifentanil models
-            if compartment_model[1] == 'Minto' or compartment_model[0] is None:
-                ke0[1] = 0.595 - 0.007 * (age - 40)
-                cv_ke = 0.68
-                w_ke[1] = np.sqrt(np.log(1+cv_ke**2))
-            elif compartment_model[1] == 'Eleveld':
-                ke0[1] = 1.09 * np.exp(-0.0289 * (age - 35))
-                w_ke[1] = 1.26
-
-        if hill_param[0] is not None:  # Parameter given as an input
+        if hill_param is not None:  # Parameter given as an input
             self.c50p = hill_param[0]
             self.c50r = hill_param[1]
             self.gamma = hill_param[2]
@@ -90,7 +52,7 @@ class BIS_PD_model:
             self.E0 = hill_param[4]
             self.Emax = hill_param[5]
 
-        elif Hill_model == 'Bouillon':
+        elif hill_model == 'Bouillon':
             # See [1] T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
             # Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
             # Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
@@ -106,7 +68,7 @@ class BIS_PD_model:
             # coefficient of variation
             cv_c50p = 0.182
             cv_c50r = 0.888
-            cv_gamma = 30.4
+            cv_gamma = 0.304
             cv_beta = 0
             cv_E0 = 0
             cv_Emax = 0
@@ -118,27 +80,18 @@ class BIS_PD_model:
             w_E0 = np.sqrt(np.log(1+cv_E0**2))
             w_Emax = np.sqrt(np.log(1+cv_Emax**2))
 
-        if random and hill_param[0] is not None:
-
-            ke0[0] *= np.exp(np.random.normal(scale=w_ke[0]))
-            ke0[1] *= np.exp(np.random.normal(scale=w_ke[1]))
+        if random and hill_param is None:
             self.c50p *= np.exp(np.random.normal(scale=w_c50p))
             self.c50r *= np.exp(np.random.normal(scale=w_c50r))
-            self.beta *= np.exp(np.random.normal(scale=w_gamma))
-            self.gamma *= np.exp(np.random.normal(scale=w_beta))
+            self.beta *= np.exp(np.random.normal(scale=w_beta))
+            self.gamma *= np.exp(np.random.normal(scale=w_gamma))
             self.E0 *= min(100, np.exp(np.random.normal(scale=w_E0)))
             self.Emax *= np.exp(np.random.normal(scale=w_Emax))
 
-        self.continuous_prop = control.ss(-ke0[0], ke0[0], 1, 0)
-        self.continuous_remi = control.ss(-ke0[1], ke0[1], 1, 0)
-        self.discret_prop = self.continuous_prop.sample(ts)
-        self.discret_remi = self.continuous_remi.sample(ts)
-        self.c_es_propo = 0  # Propofol effect site concentration
-        self.c_es_remi = 0  # Remifentanil effect site concentration
         self.hill_param = [self.c50p, self.c50r, self.gamma, self.beta, self.E0, self.Emax]
         self.c50p_init = self.c50p  # for blood loss modelling
 
-    def hill_curve(self, c_es_propo: float, c_es_remi: float) -> float:
+    def compute_bis(self, c_es_propo: float, c_es_remi: float) -> float:
         """Compute BIS function from Propofol and Remifentanil effect site concentration.
 
         Parameters
@@ -161,28 +114,6 @@ class BIS_PD_model:
         interaction = (up + ur)/U_50
         bis = self.E0 - self.Emax * interaction ** self.gamma / (1 + interaction ** self.gamma)
 
-        return bis
-
-    def one_step(self, c_blood_propo: float, c_blood_remi: float) -> float:
-        """
-        Compute one step of the Pharmacodynamic system.
-
-        Parameters
-        ----------
-        cpp : float
-            Propofol plasma concentration (µg/ml).
-        cpr : float
-            Remifentanil plasma concentration (ng/ml).
-
-        Returns
-        -------
-        bis : float
-            Cureent bis value.
-
-        """
-        self.c_es_propo = self.discret_prop(None, self.c_es_propo, c_blood_propo)  # first input is ignored
-        self.c_es_remi = self.discret_remi(None, self.c_es_remi, c_blood_remi)  # first input is ignored
-        bis = self.hill_curve(self.c_es_propo, self.c_es_remi)
         return bis
 
     def update_param_blood_loss(self, v_loss_ratio: float):
@@ -247,7 +178,7 @@ class BIS_PD_model:
         cer = np.linspace(0, 4, 50)
         cep = np.linspace(0, 6, 50)
         cer, cep = np.meshgrid(cer, cep)
-        effect = 100 - self.hill_curve(cep, cer)
+        effect = 100 - self.compute_bis(cep, cer)
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
         surf = ax.plot_surface(cer, cep, effect, cmap=cm.jet, linewidth=0.1)
         ax.set_xlabel('Remifentanil')
@@ -258,10 +189,10 @@ class BIS_PD_model:
         plt.show()
 
 
-class TOL_PD_model():
+class TOL_model():
     """Hierarchical model to link druf effect site concentration to Tolerance of Laringoscopy."""
 
-    def __init__(self, model: str = 'Bouillon', model_param: list = [None]*5, random: bool = False):
+    def __init__(self, model: str = 'Bouillon', model_param: list = None, random: bool = False):
         """
         Init the class.
 
@@ -271,7 +202,7 @@ class TOL_PD_model():
             Only 'Bouillon' is available. Ignored if model_param is specified. The default is 'Bouillon'.
         model_param : list, optional
             Model parameters, model_param = [C50p, C50p, gammaP, gammaR, Preopioid intensity].
-            The default is [None]*5.
+            The default is None.
         random : bool, optional
             Add uncertainties in the parameters. Ignored if model_param is specified. The default is False.
 
@@ -309,7 +240,7 @@ class TOL_PD_model():
             self.gamma_p *= np.exp(np.random.normal(scale=w_gamma_r))
             self.pre_intensity *= np.exp(np.random.normal(scale=w_pre_intensity))
 
-    def one_step(self, cep: float, cer: float) -> float:
+    def compute_tol(self, c_es_propo: float, c_es_remi: float) -> float:
         """Return TOL from Propofol and Remifentanil effect site concentration.
 
         Compute the output of the Hirarchical model to predict TOL
@@ -328,12 +259,26 @@ class TOL_PD_model():
             TOL value.
 
         """
-        post_opioid = self.pre_intensity * (1 - fsig(cer, self.c50r*self.pre_intensity, self.gamma_r))
-        tol = 1 - fsig(cep, self.c50p*post_opioid, self.gamma_p)
+        post_opioid = self.pre_intensity * (1 - fsig(c_es_remi, self.c50r*self.pre_intensity, self.gamma_r))
+        tol = 1 - fsig(c_es_propo, self.c50p*post_opioid, self.gamma_p)
         return tol
 
+    def plot_surface(self):
+        """Plot the 3D-Hill surface of the BIS related to Propofol and Remifentanil effect site concentration."""
+        cer = np.linspace(0, 4, 50)
+        cep = np.linspace(0, 6, 50)
+        cer, cep = np.meshgrid(cer, cep)
+        effect = 100 - self.compute_tol(cep, cer)
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        surf = ax.plot_surface(cer, cep, effect, cmap=cm.jet, linewidth=0.1)
+        ax.set_xlabel('Remifentanil')
+        ax.set_ylabel('Propofol')
+        ax.set_zlabel('Effect')
+        fig.colorbar(surf, shrink=0.5, aspect=8)
+        ax.view_init(12, -72)
+        plt.show()
 
-class Hemo_PD_model():
-    """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Meanrterial pressure and Cardiac Output."""
+# class Hemo_PD_model():
+#     """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Meanrterial pressure and Cardiac Output."""
 
-    def __init__(self, )
+#     def __init__(self, )
