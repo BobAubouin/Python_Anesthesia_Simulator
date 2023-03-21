@@ -278,7 +278,199 @@ class TOL_model():
         ax.view_init(12, -72)
         plt.show()
 
-# class Hemo_PD_model():
-#     """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Meanrterial pressure and Cardiac Output."""
 
-#     def __init__(self, )
+class Hemo_PD_model():
+    """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Mean Arterial Pressure and Cardiac Output."""
+
+    def __init__(self, nore_param: list = None, propo_param: list = None,
+                 remi_param: list = None, random: bool = False,
+                 CO_base: float = 6.5, MAP_base: float = 90):
+        """
+        Initialize the class.
+
+        Parameters
+        ----------
+        nore_param : list, optional
+            List of hill curve parameters for Norepinephrine action [Emax_map, c50_map, gamma_map,
+                                                                     Emax_co, c50_co, gamma_co].
+            The default is None.
+        propo_param : list, optional
+           List of hill curve parameters for Propofol action [Emax_map, c50_map, gamma_map,
+                                                              Emax_co, c50_co, gamma_co].
+            The default is None.
+        remi_param : list, optional
+            List of hill curve parameters for Relifentanil action [Emax_map, c50_map, gamma_map,
+                                                                   Emax_co, c50_co, gamma_co].
+            The default is None.
+        random : bool, optional
+            Add uncertainties in the parameters. The default is False.
+        co_base: float, optional
+            Baseline Cardiac output (L/min). The default is 6.5 L/min.
+        map_base: float, optional
+            Baseline mean arterial pressure (mmHg). The default is 90mmHg.
+
+        Returns
+        -------
+        None.
+
+        """
+        self.co_base = co_base
+        self.map_base = map_base
+
+        if nore_param is None:
+            # see H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
+            # in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
+            # vol. 95, no. 6, pp. 782–788, Dec. 2005, doi: 10.1093/bja/aei259.
+            self.emax_nor_map = 98.7
+            self.c50_nor_map = 70.4
+            self.gamma_nor_map = 1.8
+            w_emax_nor_map = 0
+            w_c50_nor_map = 1.64
+            w_gamma_nor_map = 0
+
+            # see ???
+            self.emax_nor_co = 0.3 * self.co_base
+            self.c50_nor_co = 0.36
+            self.gamma_nor_co = 2.3  # to have an increase of 11% for a change between 0.24 and 0.48 of concentration
+            w_emax_nor_co = 1
+            w_c50_nor_co = 1
+            w_gamma_nor_co = 1
+
+        else:
+            self.emax_nor_map = nore_param[0]
+            self.c50_nor_map = nore_param[1]
+            self.gamma_nor_ma = nore_param[2]
+            self.emax_nor_co = nore_param[3]
+            self.c50_nor_co = nore_param[4]
+            self.gamma_nor_co = nore_param[5]
+
+            # variability set to 0 if value are given
+            w_emax_nor_map = 0
+            w_c50_nor_map = 0
+            w_gamma_nor_map = 0
+            w_emax_nor_co = 0
+            w_c50_nor_co = 0
+            w_gamma_nor_co = 0
+
+        if propo_param is None = :
+            # see ???
+            self.emax_propo_map = 98.7
+            self.c50_propo_map = 70.4
+            self.gamma_propo_map = 2
+            w_emax_propo_map = 0
+            w_c50_propo_map = 0
+            w_gamma_propo_map = 0
+
+            # see ???
+            self.emax_propo_co =
+            self.c50_propo_co =
+            self.gamma_propo_co = 2
+            w_emax_propo_co = 0
+            w_c50_propo_co = 0
+            w_gamma_propo_co = 0
+        else:
+            self.emax_propo_map = propo_param[0]
+            self.c50_propo_map = propo_param[1]
+            self.gamma_propo_map = propo_param[2]
+            self.emax_propo_co = propo_param[3]
+            self.c50_propo_co = propo_param[4]
+            self.gamma_propo_co = propo_param[5]
+
+            # variability set to 0 if value are given
+            w_emax_propo_map = 0
+            w_c50_propo_map = 0
+            w_gamma_propo_map = 0
+            w_emax_propo_co = 0
+            w_c50_propo_co = 0
+            w_gamma_propo_co = 0
+
+        if remi_param is None = :
+            # see ???
+            self.emax_remi_map = 98.7
+            self.c50_remi_map = 70.4
+            self.gamma_remi_map = 2
+            w_emax_remi_map = 0
+            w_c50_remi_map = 0
+            w_gamma_remi_map = 0
+            # see ???
+            self.emax_remi_co =
+            self.c50_remi_co =
+            self.gamma_remi_co = 2
+            w_emax_remi_co = 0
+            w_c50_remi_co = 0
+            w_gamma_remi_co = 0
+        else:
+            self.emax_remi_map = remi_param[0]
+            self.c50_remi_map = remi_param[1]
+            self.gamma_remi_ma = remi_param[2]
+            self.emax_remi_co = remi_param[3]
+            self.c50_remi_co = remi_param[4]
+            self.gamma_remi_co = remi_param[5]
+
+            # variability set to 0 if value are given
+            w_emax_remi_map = 0
+            w_c50_remi_map = 0
+            w_gamma_remi_map = 0
+            w_emax_remi_co = 0
+            w_c50_remi_co = 0
+            w_gamma_remi_co = 0
+
+        if random:
+            # Norepinephrine
+            self.emax_nor_map *= np.exp(np.random.normal(scale=w_emax_nor_map))
+            self.c50_nor_map *= np.exp(np.random.normal(scale=w_c50_nor_map))
+            self.gamma_nor_map *= np.exp(np.random.normal(scale=w_gamma_nor_map))
+
+            self.emax_nor_co *= np.exp(np.random.normal(scale=w_emax_nor_co))
+            self.c50_nor_co *= np.exp(np.random.normal(scale=w_c50_nor_co))
+            self.gamma_nor_co *= np.exp(np.random.normal(scale=w_gamma_nor_co))
+
+            # Propofol
+            self.emax_propo_map *= np.exp(np.random.normal(scale=w_emax_propo_map))
+            self.c50_propo_map *= np.exp(np.random.normal(scale=w_c50_propo_map))
+            self.gamma_propo_map *= np.exp(np.random.normal(scale=w_gamma_propo_map))
+
+            self.emax_propo_co *= np.exp(np.random.normal(scale=w_emax_propo_co))
+            self.c50_propo_co *= np.exp(np.random.normal(scale=w_c50_propo_co))
+            self.gamma_propo_co *= np.exp(np.random.normal(scale=w_gamma_propo_co))
+
+            # Remifentanil
+            self.emax_remi_map *= np.exp(np.random.normal(scale=w_emax_remi_map))
+            self.c50_remi_map *= np.exp(np.random.normal(scale=w_c50_remi_map))
+            self.gamma_remi_map *= np.exp(np.random.normal(scale=w_gamma_remi_map))
+
+            self.emax_remi_co *= np.exp(np.random.normal(scale=w_emax_remi_co))
+            self.c50_remi_co *= np.exp(np.random.normal(scale=w_c50_remi_co))
+            self.gamma_remi_co *= np.exp(np.random.normal(scale=w_gamma_remi_co))
+
+    def compute_hemo(c_es_propo: float, c_es_remi: float, c_es_nore: float):
+        """
+        Compute current MAP and CO using addition of hill curv, one for each drugs.
+
+        Parameters
+        ----------
+        c_es_propo : float
+            Propofol hemodynamic effect site concentration µg/mL.
+        c_es_remi : float
+            Remifentanil hemodynamic effect site concentration µg/mL.
+        c_es_nore : float
+            Norepinephrine hemodynamic effect site concentration µg/mL.
+
+        Returns
+        -------
+        map : TYPE
+            DESCRIPTION.
+        co : TYPE
+            DESCRIPTION.
+
+        """
+
+        map = self.map_base + (self.emax_propo_map * fsig(c_es_propo, self.c50_propo_map, self.gamma_propo_map) +
+                               self.emax_remi_map * fsig(c_es_remi, self.c50_remi_map, self.gamma_remi_map) +
+                               self.emax_nore_map * fsig(c_es_nore, self.c50_nore_map, self.gamma_nore_map))
+
+        co = self.map_base + (self.emax_propo_co * fsig(c_es_propo, self.c50_propo_co, self.gamma_propo_co) +
+                              self.emax_remi_co * fsig(c_es_remi, self.c50_remi_co, self.gamma_remi_co) +
+                              self.emax_nore_co * fsig(c_es_nore, self.c50_nore_co, self.gamma_nore_co))
+
+        return map, co
