@@ -68,7 +68,7 @@ In PAS all drugs effect are described by the well know Pharmacokinetic-Pharmacod
 
 The standard way to model Pharmacokinetic of drugs is to used compartments model. Both Propofol and Remifentanil have been studied in many clinical trials and 3-comparments model is considered as the standard way to model those drugs parmacokinetics and also the way it is implemented in PAS.  Population The different population model available are listed beloow:
 
-- For Propofol: Schnider @schniderInfluenceAgePropofol1999, @marshPharmacokineticModelDriven1991, Marsh model with modified time constant for the effect site compartment @struysComparisonPlasmaCompartment2000,  @schuttlerPopulationPharmacokineticsPropofol2000 and  @eleveldPharmacokineticPharmacodynamicModel2018.
+- For Propofol: @schniderInfluenceAgePropofol1999, @marshPharmacokineticModelDriven1991, Marsh model with modified time constant for the effect site compartment [@struysComparisonPlasmaCompartment2000],  @schuttlerPopulationPharmacokineticsPropofol2000 and  @eleveldPharmacokineticPharmacodynamicModel2018.
 
 - For Remifentanil: @mintoInfluenceAgeGender1997 and @eleveldAllometricModelRemifentanil2017.
 
@@ -93,7 +93,7 @@ For MAP and CO, the interaction between drugs have not been studied yet. Thus th
 
 - For Remifentanil 
 
-- For Norepinephrine the value from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance to the PK model. Here the default paramaters do not model an interaction between Norepinephrine and CO due to negligible impact [@pardoBasicsAnesthesiaEBook2017].
+- For Norepinephrine the value from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance to the PK model. For the impact on Cardiac Output we extrapolate value from @hamzaouiEarlyAdministrationNorepinephrine2010.
 
 
 # Conclusion and Future development
