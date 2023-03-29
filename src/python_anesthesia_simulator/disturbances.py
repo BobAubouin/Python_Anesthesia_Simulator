@@ -74,7 +74,7 @@ def compute_disturbances(time: float, dist_profil: str = 'realistic',
                                   [9.999,   0,  0,   0],
                                   [10,    10,  5, 0.3],
                                   [20,   10,  5, 0.3],
-                                  [20.001,  0,  5,   0],
+                                  [20.001,  0,  0,   0],
                                   [30,    0,  0,   0]])
 
     elif dist_profil == 'null':

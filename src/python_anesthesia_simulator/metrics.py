@@ -33,7 +33,7 @@ def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance'
 
     Returns
     -------
-    for "induciton" phase:
+    for "induction" phase:
     TT : float
         Observed time-to-target (in seconds) required for reaching first time the target interval of [55,45] BIS values
     BIS_NADIR: float
@@ -58,7 +58,7 @@ def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance'
      BIS_NADIRn: float
          Maximum BIS vamue after the negative step disturbance.
 
-    For total phase: both indction and maintenance phase.
+    For total phase: both induction and maintenance phase.
     """
     if phase == 'induction':
         BIS_NADIR = min(Bis)

@@ -510,7 +510,8 @@ class CompartmentModel:
                 B = B_nom
         self.A_init = A
         self.B_init = B
-
+        self.v1 = v1
+        self.drug = drug
         # Continuous system with blood concentration as output
         self.continuous_sys = control.ss(A, B, C, D)
         # Discretization of the system
@@ -555,20 +556,23 @@ class CompartmentModel:
         """
         coeff = 1
         Anew = copy.deepcopy(self.A_init)
-        Anew[:3, :3] = coeff * Anew[:3, :3] * (CO_ratio - 1)
+        if self.drug == 'Propofol' or self.drug == 'Remifentanil':
+            Anew[:3, :3] = coeff * Anew[:3, :3] * CO_ratio
+        else:
+            Anew = Anew * coeff * CO_ratio
         # Continuous system with blood concentration as output
-        self.continuous_sys = control.ss(Anew, self.B, self.C, self.D)
+        self.continuous_sys = control.ss(Anew, self.continuous_sys.B, self.continuous_sys.C, self.continuous_sys.D)
         # Discretization of the system
         self.discretize_sys = self.continuous_sys.sample(self.ts)
 
-    def update_param_blood_loss(self, v_loss_ratio: float):
+    def update_param_blood_loss(self, v_ratio: float):
         """Update PK coefficient to mimic a blood loss.
 
         Updaate the blodd volume compartment
         Parameters
         ----------
-        v_loss : float
-            loss volume as a fraction of total volume, 0 mean no loss, 1 mean 100% loss.
+        v_ratio : float
+            blood volume as a fraction of init volume, 1 mean no loss, 0 mean 100% loss.
 
         Returns
         -------
@@ -577,13 +581,15 @@ class CompartmentModel:
         """
         Bnew = copy.deepcopy(self.B_init)
         Anew = copy.deepcopy(self.A_init)
-
-        Anew[0][0] /= (1 - v_loss_ratio)
-        Anew[1][0] /= (1 - v_loss_ratio)
-        Anew[2][0] /= (1 - v_loss_ratio)
-        Bnew /= (1 - v_loss_ratio)
+        if self.drug == 'Propofol' or self.drug == 'Remifentanil':
+            Anew[0][0] /= v_ratio
+            Anew[1][0] /= v_ratio
+            Anew[2][0] /= v_ratio
+        else:
+            Anew /= v_ratio
+        Bnew /= v_ratio
 
         # Continuous system with blood concentration as output
-        self.continuous_sys = control.ss(Anew, Bnew, self.C, self.D)
+        self.continuous_sys = control.ss(Anew, Bnew, self.continuous_sys.C, self.continuous_sys.D)
         # Discretization of the system
         self.discretize_sys = self.continuous_sys.sample(self.ts)

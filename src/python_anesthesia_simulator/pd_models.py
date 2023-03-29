@@ -116,16 +116,15 @@ class BIS_model:
 
         return bis
 
-    def update_param_blood_loss(self, v_loss_ratio: float):
+    def update_param_blood_loss(self, v_ratio: float):
         """Update PK coefficient to mimic a blood loss.
 
-        Update the c50p parameters thanks to the blood volume loss ratio.
+        Update the c50p parameters thanks to the blood volume ratio.
 
         Parameters
         ----------
         v_loss : float
-            loss volume as a fraction of total volume, 0 mean no loss, 1 mean 100% loss.
-
+            blood volume as a fraction of init volume, 1 mean no loss, 0 mean 100% loss.
         Returns
         -------
         None.
@@ -135,7 +134,7 @@ class BIS_model:
         # and Pharmacodynamic Analysis,” Anesthesiology, vol. 99, no. 2, pp. 409–420, Aug. 2003,
         # doi: 10.1097/00000542-200308000-00023.
 
-        self.c50r = self.c50p_init - 3/0.5*v_loss_ratio
+        self.c50r = self.c50p_init - 3/0.5*(1-v_ratio)
 
     def inverse_hill(self, BIS: float, cer: float = 0) -> float:
         """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration.
@@ -245,6 +244,7 @@ class TOL_model():
 
         Compute the output of the Hirarchical model to predict TOL
         from Propofol and Remifentanil effect site concentration.
+        TOL = 1 mean very relaxed and will tolerate laryngoscopie while TOL = 0 mean fully awake and will not tolerate.
 
         Parameters
         ----------
@@ -260,20 +260,20 @@ class TOL_model():
 
         """
         post_opioid = self.pre_intensity * (1 - fsig(c_es_remi, self.c50r*self.pre_intensity, self.gamma_r))
-        tol = 1 - fsig(c_es_propo, self.c50p*post_opioid, self.gamma_p)
+        tol = fsig(c_es_propo, self.c50p*post_opioid, self.gamma_p)
         return tol
 
     def plot_surface(self):
         """Plot the 3D-Hill surface of the BIS related to Propofol and Remifentanil effect site concentration."""
-        cer = np.linspace(0, 4, 50)
-        cep = np.linspace(0, 6, 50)
+        cer = np.linspace(0, 20, 50)
+        cep = np.linspace(0, 8, 50)
         cer, cep = np.meshgrid(cer, cep)
-        effect = 100 - self.compute_tol(cep, cer)
+        effect = self.compute_tol(cep, cer)
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
         surf = ax.plot_surface(cer, cep, effect, cmap=cm.jet, linewidth=0.1)
         ax.set_xlabel('Remifentanil')
         ax.set_ylabel('Propofol')
-        ax.set_zlabel('Effect')
+        ax.set_zlabel('TOL')
         fig.colorbar(surf, shrink=0.5, aspect=8)
         ax.view_init(12, -72)
         plt.show()
@@ -322,40 +322,40 @@ class Hemo_PD_model():
             # see H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
             # in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
             # vol. 95, no. 6, pp. 782–788, Dec. 2005, doi: 10.1093/bja/aei259.
-            self.emax_nor_map = 98.7
-            self.c50_nor_map = 70.4
-            self.gamma_nor_map = 1.8
-            w_emax_nor_map = 0
-            w_c50_nor_map = 1.64
-            w_gamma_nor_map = 0
+            self.emax_nore_map = 98.7
+            self.c50_nore_map = 70.4
+            self.gamma_nore_map = 1.8
+            w_emax_nore_map = 0
+            w_c50_nore_map = 1.64
+            w_gamma_nore_map = 0
 
             # see X. Monnet, J. Jabot, J. Maizel, C. Richard, and J.-L. Teboul,
             # “Norepinephrine increases cardiac preload and reduces preload dependency assessed by passive leg
             # raising in septic shock patients*,”
             # Critical Care Medicine, vol. 39, no. 4, p. 689, Apr. 2011, doi: 10.1097/CCM.0b013e318206d2a3.
 
-            self.emax_nor_co = 0.3 * self.co_base
-            self.c50_nor_co = 0.36
-            self.gamma_nor_co = 2.3  # to have an increase of 11% for a change between 0.24 and 0.48 of concentration
-            std_emax_nor_co = std_not_known
-            w_c50_nor_co = w_not_known
-            w_gamma_nor_co = w_not_known
+            self.emax_nore_co = 0.3 * self.co_base
+            self.c50_nore_co = 0.36
+            self.gamma_nore_co = 2.3  # to have an increase of 11% for a change between 0.24 and 0.48 of concentration
+            std_emax_nore_co = std_not_known
+            w_c50_nore_co = w_not_known
+            w_gamma_nore_co = w_not_known
 
         else:
-            self.emax_nor_map = nore_param[0]
-            self.c50_nor_map = nore_param[1]
-            self.gamma_nor_ma = nore_param[2]
-            self.emax_nor_co = nore_param[3]
-            self.c50_nor_co = nore_param[4]
-            self.gamma_nor_co = nore_param[5]
+            self.emax_nore_map = nore_param[0]
+            self.c50_nore_map = nore_param[1]
+            self.gamma_nore_ma = nore_param[2]
+            self.emax_nore_co = nore_param[3]
+            self.c50_nore_co = nore_param[4]
+            self.gamma_nore_co = nore_param[5]
 
             # variability set to 0 if value are given
-            w_emax_nor_map = 0
-            w_c50_nor_map = 0
-            w_gamma_nor_map = 0
-            w_emax_nor_co = 0
-            w_c50_nor_co = 0
-            w_gamma_nor_co = 0
+            w_emax_nore_map = 0
+            w_c50_nore_map = 0
+            w_gamma_nore_map = 0
+            std_emax_nore_co = 0
+            w_c50_nore_co = 0
+            w_gamma_nore_co = 0
 
         if propo_param is None:
             # see C. Jeleazcov, M. Lavielle, J. Schüttler, and H. Ihmsen,
@@ -450,13 +450,13 @@ class Hemo_PD_model():
 
         if random:
             # Norepinephrine
-            self.emax_nor_map *= np.exp(np.random.normal(scale=w_emax_nor_map))
-            self.c50_nor_map *= np.exp(np.random.normal(scale=w_c50_nor_map))
-            self.gamma_nor_map *= np.exp(np.random.normal(scale=w_gamma_nor_map))
+            self.emax_nore_map *= np.exp(np.random.normal(scale=w_emax_nore_map))
+            self.c50_nore_map *= np.exp(np.random.normal(scale=w_c50_nore_map))
+            self.gamma_nore_map *= np.exp(np.random.normal(scale=w_gamma_nore_map))
 
-            self.emax_nor_co += np.random.normal(scale=std_emax_nor_co)
-            self.c50_nor_co *= np.exp(np.random.normal(scale=w_c50_nor_co))
-            self.gamma_nor_co *= np.exp(np.random.normal(scale=w_gamma_nor_co))
+            self.emax_nore_co += np.random.normal(scale=std_emax_nore_co)
+            self.c50_nore_co *= np.exp(np.random.normal(scale=w_c50_nore_co))
+            self.gamma_nore_co *= np.exp(np.random.normal(scale=w_gamma_nore_co))
 
             # Propofol
             self.emax_propo_SAP *= np.exp(np.random.normal(scale=w_emax_propo_SAP))
@@ -494,10 +494,10 @@ class Hemo_PD_model():
 
         Returns
         -------
-        map : TYPE
-            DESCRIPTION.
-        co : TYPE
-            DESCRIPTION.
+        map : float
+            Mean arterial pressure (mmHg), without blood loss.
+        co : float
+            Cardiac output (L/min), without blood loss.
 
         """
         map_nore = self.emax_nore_map * fsig(c_es_nore, self.c50_nore_map, self.gamma_nore_map)
@@ -512,6 +512,6 @@ class Hemo_PD_model():
         co_propo = self.emax_propo_co * fsig((c_es_propo[0] + c_es_propo[1])/2, self.c50_propo_co, self.gamma_propo_co)
         co_remi = self.emax_remi_co * fsig(c_es_remi, self.c50_remi_co, self.gamma_remi_co)
 
-        self.co = self.map_base + co_nore + co_propo + co_remi
+        self.co = self.co_base + co_nore + co_propo + co_remi
 
         return self.map, self.co

@@ -11,7 +11,7 @@ import pandas as pd
 import casadi as cas
 # Local imports
 from .pk_models import CompartmentModel
-from .pd_models import BIS_model, TOL_model, Hemo_PD_model, fsig
+from .pd_models import BIS_model, TOL_model, Hemo_PD_model
 
 
 class Patient:
@@ -105,17 +105,9 @@ class Patient:
         # Init PD model for Hemodynamic
         self.hemo_pd = Hemo_PD_model(random=random_PD, co_base=co_base, map_base=map_base)
 
-        # init blood loss constant
-        self.blood_loss_tf = control.tf([1], [60, 1])
-        self.blood_loss_tfd = control.sample_system(self.blood_loss_tf, self.ts)
-        self.blood_loss_sysd = control.tf2ss(self.blood_loss_tfd)
-        self.x_v_loss = 0
-        self.v_loss = 0
-        self.blood_trans_tf = control.tf([1], [600, 1])
-        self.blood_trans_tfd = control.sample_system(self.blood_trans_tf, self.ts)
-        self.blood_trans_sysd = control.tf2ss(self.blood_trans_tfd)
-        self.x_v_trans = 0
-        self.v_trans = 0
+        # init blood loss volume
+        self.blood_volume = self.propo_pk.v1
+        self.blood_volume_init = self.propo_pk.v1
 
         # Init all the output variable
         self.bis = self.bis_pd.compute_bis(0, 0)
@@ -128,16 +120,16 @@ class Patient:
             # Time variable which will be stored
             self.Time = 0
             column_names = ['Time',  # time
-                            'BIS', 'TOL', 'MAP', 'CO', 'NMB',  # outputs
-                            'u_propo', 'u_remi', 'u_dopamine', 'u_snp', 'u_atracium',  # inputs
-                            'x_propo_1', 'x_propo_2', 'x_propo_3', 'x_propo_4',  # x_PK_propo
-                            'x_remi_1', 'x_remi_2', 'x_remi_3', 'x_remi_4',  # x_PK_remi
-                            'c_blood_nore', 'x_rass', 'x_hemo_c_propo', 'x_hemo_c_remi']  # x nmb, rass and hemo
+                            'BIS', 'TOL', 'MAP', 'CO',  # outputs
+                            'u_propo', 'u_remi', 'u_nore',  # inputs
+                            'x_propo_1', 'x_propo_2', 'x_propo_3', 'x_propo_4', 'x_propo_5', 'x_propo_6',  # x_PK_propo
+                            'x_remi_1', 'x_remi_2', 'x_remi_3', 'x_remi_4', 'x_remi_5',  # x_PK_remi
+                            'c_blood_nore', 'v_blood']  # nore concentration and blood volume
 
             self.dataframe = pd.DataFrame(columns=column_names)
 
     def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
-                 Dist: list = [0]*3, noise: bool = True) -> list:
+                 blood_rate: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
         """
         Simulate one step time of the patient.
 
@@ -149,6 +141,9 @@ class Patient:
             Remifentanil infusion rate (µg/s). The default is 0.
         u_nore : float, optional
             Norepinephrine infusion rate (µg/s). The default is 0.
+        blood_rate : float, optional
+            Fluid rates from blood volume (mL/min), negative is bleeding while positive is a transfusion.
+            The default is 0.
         Dist : list, optional
             Disturbance vector on [BIS (%), MAP (mmHg), CO (L/min)]. The default is [0]*3.
         noise : bool, optional
@@ -175,11 +170,17 @@ class Patient:
         self.map += Dist[1]
         self.co += Dist[2]
 
+        # blood loss effect
+        if blood_rate != 0 or self.blood_volume != self.blood_volume_init:
+            self.blood_loss(blood_rate)
+            self.map *= self.blood_volume/self.blood_volume_init
+            self.co *= self.blood_volume/self.blood_volume_init
+
         # update PK model with CO
         if self.co_update:
-            self.propo_pk.update_param_CO(self.CO/self.CO_init)
-            self.remi_pk.update_param_CO(self.CO/self.CO_init)
-            self.nore_pk.update_param_CO(self.CO/self.CO_init)
+            self.propo_pk.update_param_CO(self.co/self.co_base)
+            self.remi_pk.update_param_CO(self.co/self.co_base)
+            self.nore_pk.update_param_CO(self.co/self.co_base)
 
         # add noise
         if noise:
@@ -213,26 +214,15 @@ class Patient:
 
         """
         # find Remifentanil and Propofol Concentration from BIS and TOL
-        cep = cas.MX('cep')  # effect site concentration of propofol in the optimization problem
-        cer = cas.MX('cer')  # effect site concentration of remifentanil in the optimization problem
-        # temp = (max(0, self.bis_pd.E0-bis_target)/(self.bis_pd.Emax-self.bis_pd.E0+bis_target))**(1/self.bis_pd.gamma)
+        cep = cas.MX.sym('cep')  # effect site concentration of propofol in the optimization problem
+        cer = cas.MX.sym('cer')  # effect site concentration of remifentanil in the optimization problem
 
-        # Yp = cep / self.bis_pd.c50p
-        # Yr = cer / self.bis_pd.c50r
-        # b = 3*Yr - temp
-        # c = 3*Yr**2 - (2 - self.BisPD.beta) * Yr * temp
-        # d = Yr**3 - Yr**2*temp
+        bis = self.bis_pd.compute_bis(cep, cer)
+        tol = self.tol_pd.compute_tol(cep, cer)
 
-        # post_opioid = self.tol_pd.pre_intensity * (1 - fsig(cer, self.tol_pd.c50r*self.tol_pd.pre_intensity,
-        #                                                     self.tol_pd.gamma_r))
-        # tol = 1 - fsig(cep, self.tol_pd.c50p*post_opioid, self.tol_pd.gamma_p)
-
-        bis = self.bis_pd.hill_curve(cep, cer)
-        tol = self.tol_pd.one_step(cep, cer)
-
-        J = (bis - bis_target)**2/100**2 + (tol - tol_target)**2
+        J = (bis - bis_target)**2/100**2 + (tol - tol_target)**2 + 0.00001 * (cep*2-cer)**2
         w = [cep, cer]
-        w0 = [self.bis_pd.c50p, self.bis_pd.c50r]
+        w0 = [self.bis_pd.c50p, self.bis_pd.c50r/2.5]
         lbw = [0, 0]
         ubw = [50, 50]
 
@@ -249,10 +239,10 @@ class Patient:
         map_without_nore, co_without_nore = self.hemo_pd.compute_hemo([self.c_blood_propo_eq, self.c_blood_propo_eq],
                                                                       self.c_blood_remi_eq, 0)
         # Then compute the right nore concentration to meet the MAP target
-        wanted_map_effect = map_without_nore - map_target
-        self.c_blood_nore_eq = self.hemo_pd.c50_nor_map * (wanted_map_effect /
-                                                           (self.hemo_pd.emax_nor_map-wanted_map_effect)
-                                                           )**(1/self.hemo_pd.gamma_nor_map)
+        wanted_map_effect = map_target - map_without_nore
+        self.c_blood_nore_eq = self.hemo_pd.c50_nore_map * (wanted_map_effect /
+                                                            (self.hemo_pd.emax_nore_map-wanted_map_effect)
+                                                            )**(1/self.hemo_pd.gamma_nore_map)
         _, self.co_eq = self.hemo_pd.compute_hemo([self.c_blood_propo_eq, self.c_blood_propo_eq],
                                                   self.c_blood_remi_eq, self.c_blood_nore_eq)
         # update pharmacokinetics model from co value
@@ -267,8 +257,7 @@ class Patient:
 
         return self.u_propo_eq, self.u_remi_eq, self.u_nore_eq
 
-    def initialized_at_given_input(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
-                                   us: float = 0, ua: float = 0):
+    def initialized_at_given_input(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0):
         """
         Initialize the patient Simulator at the given input as an equilibrium point.
 
@@ -289,8 +278,6 @@ class Patient:
         self.u_propo_eq = u_propo
         self.u_remi_eq = u_remi
         self.u_nore_eq = u_nore
-        self.uS_eq = us
-        self.uA_eq = ua
 
         self.c_blood_propo_eq = u_propo * control.dcgain(self.propo_pk.continuous_sys)
         self.c_blood_remi_eq = u_remi * control.dcgain(self.remi_pk.continuous_sys)
@@ -300,38 +287,13 @@ class Patient:
         x_init_propo = np.linalg.solve(-self.propo_pk.continuous_sys.A, self.propo_pk.continuous_sys.B * u_propo)
         self.propo_pk.x = x_init_propo
 
-        x_init_remi = np.linalg.solve(-self.remi_pk.continuous_sys.A, self.remi_pk.continuous_sys.B * u_propo)
+        x_init_remi = np.linalg.solve(-self.remi_pk.continuous_sys.A, self.remi_pk.continuous_sys.B * u_remi)
         self.remi_pk.x = x_init_remi
 
         x_init_nore = np.linalg.solve(-self.nore_pk.continuous_sys.A, self.nore_pk.continuous_sys.B * u_nore)
-        self.u_nore.x = x_init_nore
+        self.nore_pk.x = x_init_nore
 
-        # Effect site models
-        self.bis_pd.c_es_propo = self.c_blood_propo_eq
-        self.bis_pd.c_es_remi = self.c_blood_remi_eq
-
-        # Hemo dynamics
-        self.Hemo.CeP = self.Cp_ES_eq
-        self.Hemo.CeR = self.Cr_ES_eq
-
-        x11_init = np.linalg.solve(-(self.Hemo.A11 - np.eye(len(self.Hemo.A11))),
-                                   self.Hemo.B11 * self.uD_eq)
-        self.Hemo.x11 = x11_init
-
-        x12_init = np.linalg.solve(-(self.Hemo.A12 - np.eye(len(self.Hemo.A12))),
-                                   self.Hemo.B12 * self.uD_eq)
-        self.Hemo.x12 = x12_init
-
-        x21_init = np.linalg.solve(-(self.Hemo.A21 - np.eye(len(self.Hemo.A21))),
-                                   self.Hemo.B21 * self.uD_eq)
-        self.Hemo.x21 = x21_init
-
-        x22_init = np.linalg.solve(-(self.Hemo.A22 - np.eye(len(self.Hemo.A22))),
-                                   self.Hemo.B22 * self.uD_eq)
-        self.Hemo.x22 = x22_init
-
-    def initialized_at_maintenance(self, bis_target: float, rass_target: float, map_target: float,
-                                   co_target: float, nmb_target: float = None):
+    def initialized_at_maintenance(self, bis_target: float, tol_target: float, map_target: float):
         """Initialize the patient model at the equilibrium point for the given output value.
 
         Parameters
@@ -342,10 +304,6 @@ class Patient:
             RASS target ([0, -5]).
         map_target:float
             MAP target (mmHg).
-        co_target : float
-            CO target (L/min).
-        nmb_target : float, optional
-            NMB target (%). The default is None.
 
         Returns
         -------
@@ -354,41 +312,37 @@ class Patient:
         """
         # Find equilibrium point
 
-        self.find_equilibrium(bis_target, rass_target, map_target, co_target)
+        self.find_equilibrium(bis_target, tol_target, map_target)
 
         # set them as starting point in the simulator
 
         self.initialized_at_given_input(u_propo=self.u_propo_eq,
                                         u_remi=self.u_remi_eq,
-                                        u_nore=self.u_nore_eq,
-                                        us=self.uS_eq,
-                                        ua=self.uA_eq)
+                                        u_nore=self.u_nore_eq)
 
-    def blood_loss(self, blood_loss_target: float = 0, transfusion_target: float = 0, mode: int = 0):
+    def blood_loss(self, fluid_rate: float = 0):
         """Actualize the patient parameters to mimic blood loss.
 
         Parameters
         ----------
-        blood_loss_target : float, optional
-            DESCRIPTION. The default is 0.
-        transfusion_target : float, optional
-            DESCRIPTION. The default is 0.
+        fluid_rate : float, optional
+            Fluid rates from blood volume (mL/min), negative is bleeding while positive is a transfusion.
+            The default is 0.
 
         Returns
         -------
         None.
 
         """
-        # compute the blood loss ans transfusion dynamic
-        self.x_v_loss = self.blood_loss_sysd.A * self.x_v_loss + self.blood_loss_sysd.B * blood_loss_target
-        self.x_v_trans = self.blood_trans_sysd.A * self.x_v_trans + self.blood_trans_sysd.B * transfusion_target
-
-        self.v_loss = self.blood_loss_sysd.C * self.x_v_loss + self.blood_loss_sysd.D * blood_loss_target
-        self.v_trans = self.blood_trans_sysd.C * self.x_v_trans + self.blood_trans_sysd.D * transfusion_target
+        fluid_rate = fluid_rate/1000 / 60  # in L/s
+        # compute the blood volume
+        self.blood_volume += fluid_rate*self.ts
 
         # Update the models
-        self.PropoPK.update_coeff_blood_loss(v_loss=self.v_loss - self.v_trans, mode=mode)
-        self.RemiPK.update_coeff_blood_loss(v_loss=self.v_loss - self.v_trans, mode=mode)
+        self.propo_pk.update_param_blood_loss(self.blood_volume/self.blood_volume_init)
+        self.remi_pk.update_param_blood_loss(self.blood_volume/self.blood_volume_init)
+        self.nore_pk.update_param_blood_loss(self.blood_volume/self.blood_volume_init)
+        self.bis_pd.update_param_blood_loss(self.blood_volume/self.blood_volume_init)
 
     def save_data(self, inputs: list = [0, 0, 0]):
         """Save all current intern variable as a new line in self.dataframe."""
@@ -399,7 +353,7 @@ class Patient:
         new_line = {'Time': self.Time,
                     'BIS': self.bis, 'TOL': self.tol, 'MAP': self.map, 'CO': self.co,  # outputs
                     'u_propo': inputs[0], 'u_remi': inputs[1], 'u_nore': inputs[2],  # inputs
-                    'c_blood_nore': self.c_blood_nore}  # concentration
+                    'c_blood_nore': self.c_blood_nore, 'v_blood': self.blood_volume}  # concentration and blood volume
 
         line_x_propo = {'x_propo_' + str(i+1): self.propo_pk.x[i] for i in range(6)}
         line_x_remi = {'x_remi_' + str(i+1): self.remi_pk.x[i] for i in range(5)}
