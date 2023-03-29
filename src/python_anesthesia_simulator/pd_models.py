@@ -284,7 +284,7 @@ class Hemo_PD_model():
 
     def __init__(self, nore_param: list = None, propo_param: list = None,
                  remi_param: list = None, random: bool = False,
-                 CO_base: float = 6.5, MAP_base: float = 90):
+                 co_base: float = 6.5, map_base: float = 90):
         """
         Initialize the class.
 
@@ -295,8 +295,8 @@ class Hemo_PD_model():
                                                                      Emax_co, c50_co, gamma_co].
             The default is None.
         propo_param : list, optional
-           List of hill curve parameters for Propofol action [Emax_map, c50_map, gamma_map,
-                                                              Emax_co, c50_co, gamma_co].
+           List of hill curve parameters for Propofol action [emax_SAP, emax_DAP, c50_map_1, c50_map_2,
+                                                              gamma_map_1, gamma_map_2, Emax_co, c50_co, gamma_co].
             The default is None.
         remi_param : list, optional
             List of hill curve parameters for Relifentanil action [Emax_map, c50_map, gamma_map,
@@ -316,7 +316,8 @@ class Hemo_PD_model():
         """
         self.co_base = co_base
         self.map_base = map_base
-
+        w_not_known = 0.4
+        std_not_known = 1
         if nore_param is None:
             # see H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
             # in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
@@ -328,13 +329,17 @@ class Hemo_PD_model():
             w_c50_nor_map = 1.64
             w_gamma_nor_map = 0
 
-            # see ???
+            # see X. Monnet, J. Jabot, J. Maizel, C. Richard, and J.-L. Teboul,
+            # “Norepinephrine increases cardiac preload and reduces preload dependency assessed by passive leg
+            # raising in septic shock patients*,”
+            # Critical Care Medicine, vol. 39, no. 4, p. 689, Apr. 2011, doi: 10.1097/CCM.0b013e318206d2a3.
+
             self.emax_nor_co = 0.3 * self.co_base
             self.c50_nor_co = 0.36
             self.gamma_nor_co = 2.3  # to have an increase of 11% for a change between 0.24 and 0.48 of concentration
-            w_emax_nor_co = 1
-            w_c50_nor_co = 1
-            w_gamma_nor_co = 1
+            std_emax_nor_co = std_not_known
+            w_c50_nor_co = w_not_known
+            w_gamma_nor_co = w_not_known
 
         else:
             self.emax_nor_map = nore_param[0]
@@ -352,53 +357,81 @@ class Hemo_PD_model():
             w_c50_nor_co = 0
             w_gamma_nor_co = 0
 
-        if propo_param is None = :
-            # see ???
-            self.emax_propo_map = 98.7
-            self.c50_propo_map = 70.4
-            self.gamma_propo_map = 2
-            w_emax_propo_map = 0
-            w_c50_propo_map = 0
-            w_gamma_propo_map = 0
+        if propo_param is None:
+            # see C. Jeleazcov, M. Lavielle, J. Schüttler, and H. Ihmsen,
+            # “Pharmacodynamic response modelling of arterial blood pressure in adult
+            # volunteers during propofol anaesthesia,”
+            # BJA: British Journal of Anaesthesia, vol. 115, no. 2, pp. 213–226, Aug. 2015, doi: 10.1093/bja/aeu553.
 
-            # see ???
-            self.emax_propo_co =
-            self.c50_propo_co =
+            self.emax_propo_SAP = 54.8
+            self.emax_propo_DAP = 18.1
+            self.c50_propo_map_1 = 1.96
+            self.gamma_propo_map_1 = 4.77
+            self.c50_propo_map_2 = 2.20
+            self.gamma_propo_map_2 = 8.49
+            w_emax_propo_SAP = 0.0871
+            w_emax_propo_DAP = 0.207
+            w_c50_propo_map_1 = 0.165
+            w_c50_propo_map_2 = 0.148
+            w_gamma_propo_map_1 = 4.15
+            w_gamma_propo_map_2 = 5.13
+
+            # see J. E. Fairfield, A. Dritsas, and R. J. Beale,
+            # “HAEMODYNAMIC EFFECTS OF PROPOFOL: INDUCTION WITH 2.5 MG KG−1,”
+            # British Journal of Anaesthesia, vol. 67, no. 5, pp. 618–620, Nov. 1991, doi: 10.1093/bja/67.5.618.
+
+            self.emax_propo_co = -2
+            self.c50_propo_co = 2.6
             self.gamma_propo_co = 2
-            w_emax_propo_co = 0
-            w_c50_propo_co = 0
-            w_gamma_propo_co = 0
+            std_emax_propo_co = std_not_known
+            w_c50_propo_co = w_not_known
+            w_gamma_propo_co = w_not_known
         else:
-            self.emax_propo_map = propo_param[0]
-            self.c50_propo_map = propo_param[1]
-            self.gamma_propo_map = propo_param[2]
-            self.emax_propo_co = propo_param[3]
-            self.c50_propo_co = propo_param[4]
-            self.gamma_propo_co = propo_param[5]
+            self.emax_propo_SAP = propo_param[0]
+            self.emax_propo_DAP = propo_param[1]
+            self.c50_propo_map_1 = propo_param[2]
+            self.gamma_propo_map_1 = propo_param[3]
+            self.c50_propo_map_2 = propo_param[4]
+            self.gamma_propo_map_2 = propo_param[5]
+            self.emax_propo_co = propo_param[6]
+            self.c50_propo_co = propo_param[7]
+            self.gamma_propo_co = propo_param[8]
 
             # variability set to 0 if value are given
-            w_emax_propo_map = 0
-            w_c50_propo_map = 0
-            w_gamma_propo_map = 0
-            w_emax_propo_co = 0
+            w_emax_propo_SAP = 0
+            w_emax_propo_DAP = 0
+            w_c50_propo_map_1 = 0
+            w_c50_propo_map_2 = 0
+            w_gamma_propo_map_1 = 0
+            w_gamma_propo_map_2 = 0
+            std_emax_propo_co = 0
             w_c50_propo_co = 0
             w_gamma_propo_co = 0
 
-        if remi_param is None = :
-            # see ???
-            self.emax_remi_map = 98.7
-            self.c50_remi_map = 70.4
-            self.gamma_remi_map = 2
+        if remi_param is None:
+            # see J. F. Standing, G. B. Hammer, W. J. Sam, and D. R. Drover,
+            # “Pharmacokinetic–pharmacodynamic modeling of the hypotensive effect of
+            # remifentanil in infants undergoing cranioplasty,”
+            # Pediatric Anesthesia, vol. 20, no. 1, pp. 7–18, 2010, doi: 10.1111/j.1460-9592.2009.03174.x.
+
+            self.emax_remi_map = -map_base
+            self.c50_remi_map = 17.1
+            self.gamma_remi_map = 4.56
             w_emax_remi_map = 0
-            w_c50_remi_map = 0
+            w_c50_remi_map = 0.09
             w_gamma_remi_map = 0
-            # see ???
-            self.emax_remi_co =
-            self.c50_remi_co =
+
+            # see C. Chanavaz et al.,
+            # “Haemodynamic effects of remifentanil in children with and
+            # without intravenous atropine. An echocardiographic study,”
+            # BJA: British Journal of Anaesthesia, vol. 94, no. 1, pp. 74–79, Jan. 2005, doi: 10.1093/bja/aeh293.
+
+            self.emax_remi_co = -1.5
+            self.c50_remi_co = 5
             self.gamma_remi_co = 2
-            w_emax_remi_co = 0
-            w_c50_remi_co = 0
-            w_gamma_remi_co = 0
+            w_emax_remi_co = w_not_known
+            w_c50_remi_co = w_not_known
+            w_gamma_remi_co = w_not_known
         else:
             self.emax_remi_map = remi_param[0]
             self.c50_remi_map = remi_param[1]
@@ -421,16 +454,19 @@ class Hemo_PD_model():
             self.c50_nor_map *= np.exp(np.random.normal(scale=w_c50_nor_map))
             self.gamma_nor_map *= np.exp(np.random.normal(scale=w_gamma_nor_map))
 
-            self.emax_nor_co *= np.exp(np.random.normal(scale=w_emax_nor_co))
+            self.emax_nor_co += np.random.normal(scale=std_emax_nor_co)
             self.c50_nor_co *= np.exp(np.random.normal(scale=w_c50_nor_co))
             self.gamma_nor_co *= np.exp(np.random.normal(scale=w_gamma_nor_co))
 
             # Propofol
-            self.emax_propo_map *= np.exp(np.random.normal(scale=w_emax_propo_map))
-            self.c50_propo_map *= np.exp(np.random.normal(scale=w_c50_propo_map))
-            self.gamma_propo_map *= np.exp(np.random.normal(scale=w_gamma_propo_map))
+            self.emax_propo_SAP *= np.exp(np.random.normal(scale=w_emax_propo_SAP))
+            self.emax_propo_DAP *= np.exp(np.random.normal(scale=w_emax_propo_DAP))
+            self.c50_propo_map_1 *= np.exp(np.random.normal(scale=w_c50_propo_map_1))
+            self.gamma_propo_map_1 *= np.exp(np.random.normal(scale=w_gamma_propo_map_1))
+            self.c50_propo_map_2 *= np.exp(np.random.normal(scale=w_c50_propo_map_2))
+            self.gamma_propo_map_2 *= np.exp(np.random.normal(scale=w_gamma_propo_map_2))
 
-            self.emax_propo_co *= np.exp(np.random.normal(scale=w_emax_propo_co))
+            self.emax_propo_co += np.random.normal(scale=std_emax_propo_co)
             self.c50_propo_co *= np.exp(np.random.normal(scale=w_c50_propo_co))
             self.gamma_propo_co *= np.exp(np.random.normal(scale=w_gamma_propo_co))
 
@@ -443,14 +479,14 @@ class Hemo_PD_model():
             self.c50_remi_co *= np.exp(np.random.normal(scale=w_c50_remi_co))
             self.gamma_remi_co *= np.exp(np.random.normal(scale=w_gamma_remi_co))
 
-    def compute_hemo(c_es_propo: float, c_es_remi: float, c_es_nore: float):
+    def compute_hemo(self, c_es_propo: list, c_es_remi: float, c_es_nore: float) -> list:
         """
         Compute current MAP and CO using addition of hill curv, one for each drugs.
 
         Parameters
         ----------
-        c_es_propo : float
-            Propofol hemodynamic effect site concentration µg/mL.
+        c_es_propo : list
+            Propofolconcentration on both hemodynamic effect site concentration µg/mL.
         c_es_remi : float
             Remifentanil hemodynamic effect site concentration µg/mL.
         c_es_nore : float
@@ -464,13 +500,18 @@ class Hemo_PD_model():
             DESCRIPTION.
 
         """
+        map_nore = self.emax_nore_map * fsig(c_es_nore, self.c50_nore_map, self.gamma_nore_map)
+        u_propo = ((c_es_propo[0]/self.c50_propo_map_1)**self.gamma_propo_map_1 +
+                   (c_es_propo[1]/self.c50_propo_map_2)**self.gamma_propo_map_2)
+        map_propo = - (self.emax_propo_DAP + (self.emax_propo_SAP + self.emax_propo_DAP) / 3) * u_propo/(1+u_propo)
+        map_remi = self.emax_remi_map * fsig(c_es_remi, self.c50_remi_map, self.gamma_remi_map)
 
-        map = self.map_base + (self.emax_propo_map * fsig(c_es_propo, self.c50_propo_map, self.gamma_propo_map) +
-                               self.emax_remi_map * fsig(c_es_remi, self.c50_remi_map, self.gamma_remi_map) +
-                               self.emax_nore_map * fsig(c_es_nore, self.c50_nore_map, self.gamma_nore_map))
+        self.map = self.map_base + map_nore + map_propo + map_remi
 
-        co = self.map_base + (self.emax_propo_co * fsig(c_es_propo, self.c50_propo_co, self.gamma_propo_co) +
-                              self.emax_remi_co * fsig(c_es_remi, self.c50_remi_co, self.gamma_remi_co) +
-                              self.emax_nore_co * fsig(c_es_nore, self.c50_nore_co, self.gamma_nore_co))
+        co_nore = self.emax_nore_co * fsig(c_es_nore, self.c50_nore_co, self.gamma_nore_co)
+        co_propo = self.emax_propo_co * fsig((c_es_propo[0] + c_es_propo[1])/2, self.c50_propo_co, self.gamma_propo_co)
+        co_remi = self.emax_remi_co * fsig(c_es_remi, self.c50_remi_co, self.gamma_remi_co)
 
-        return map, co
+        self.co = self.map_base + co_nore + co_propo + co_remi
+
+        return self.map, self.co

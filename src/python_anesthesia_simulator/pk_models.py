@@ -28,7 +28,7 @@ class CompartmentModel:
         lbm : float
             lean body mass index.
         drug : str
-            either "Propofol" or "Remifentanil".
+            can be "Propofol", "Remifentanil" or "Norepinephrine".
         model : str, optional
             Could be "Minto", "Eleveld" for Remifentanil,
             "Schnider", "Marsh_initial", "Marsh_modified", "Shuttler" or "Eleveld" for Propofol.
@@ -270,6 +270,15 @@ class CompartmentModel:
                 w_cl3 = np.sqrt(0.209)
                 w_ke0 = np.sqrt(0.702)
 
+            # see C. Jeleazcov, M. Lavielle, J. Schüttler, and H. Ihmsen,
+            # “Pharmacodynamic response modelling of arterial blood pressure in adult
+            # volunteers during propofol anaesthesia,”
+            # BJA: British Journal of Anaesthesia, vol. 115, no. 2, pp. 213–226, Aug. 2015, doi: 10.1093/bja/aeu553.
+            ke1_map = 0.054
+            ke2_map = 0.0695
+            w_ke1_map = 1.5
+            w_ke2_map = 1.48
+
         elif drug == "Remifentanil":
             if model is None:
                 model = 'Minto'
@@ -372,15 +381,12 @@ class CompartmentModel:
                 w_cl2 = np.sqrt(0.0547)
                 w_cl3 = np.sqrt(0.285)
                 w_ke0 = np.sqrt(1.26)
-
-        elif drug == 'Epinephrine':
-            # see
-            v1 = None
-            cl1 = None  # L/min
-
-            w_v1 = None
-            w_cl1 = None
-
+            # see J. F. Standing, G. B. Hammer, W. J. Sam, and D. R. Drover,
+            # “Pharmacokinetic–pharmacodynamic modeling of the hypotensive effect of
+            # remifentanil in infants undergoing cranioplasty,”
+            # Pediatric Anesthesia, vol. 20, no. 1, pp. 7–18, 2010, doi: 10.1111/j.1460-9592.2009.03174.x.
+            ke_map = 0.81
+            w_ke_map = 0.41
         elif drug == 'Norepinephrine':
             # see H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
             # in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
@@ -392,7 +398,7 @@ class CompartmentModel:
             w_v1 = 1.63
             w_cl1 = 0.974
 
-        if drug == 'Propofol' or drug == 'Remifentanil':
+        if drug == 'Propofol':
             # drug amount transfer rates [1/min]
             k10 = cl1 / v1
             k12 = cl2 / v1
@@ -401,13 +407,15 @@ class CompartmentModel:
             k31 = cl3 / v3
 
             # Nominal Matrices system definition
-            A_nom = np.array([[-(k10 + k12 + k13), k21, k31, 0],
-                              [k12, -k21, 0, 0],
-                              [k13, 0, -k31, 0],
-                              [ke0, 0, 0, -ke0]])/60  # 1/s
+            A_nom = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0, 0],
+                              [k12, -k21, 0, 0, 0, 0],
+                              [k13, 0, -k31, 0, 0, 0],
+                              [ke0, 0, 0, -ke0, 0, 0],
+                              [ke1_map, 0, 0, 0, -ke1_map, 0],
+                              [ke2_map, 0, 0, 0, 0, -ke2_map]])/60  # 1/s
 
-            B_nom = np.transpose(np.array([[1/v1, 0, 0, 0]]))  # 1/L
-            C = np.array([[0, 0, 0, 1]])
+            B_nom = np.transpose(np.array([[1/v1, 0, 0, 0, 0, 0]]))  # 1/L
+            C = np.array([[0, 0, 0, 1, 0, 0]])
             D = np.array([[0]])
 
             # Introduce inter-patient variability
@@ -423,17 +431,65 @@ class CompartmentModel:
                 cl2 *= np.exp(np.random.normal(scale=w_cl2))
                 cl3 *= np.exp(np.random.normal(scale=w_cl3))
                 ke0 *= np.exp(np.random.normal(scale=w_ke0))
+                ke1_map *= np.exp(np.random.normal(scale=w_ke1_map))
+                ke2_map *= np.exp(np.random.normal(scale=w_ke2_map))
 
-                A = np.array([[-(k10 + k12 + k13), k21, k31, 0],
-                              [k12, -k21, 0, 0],
-                              [k13, 0, -k31, 0],
-                              [ke0, 0, 0, -ke0]])/60  # 1/s
+                # random Matrices system definition
+                A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0, 0],
+                              [k12, -k21, 0, 0, 0, 0],
+                              [k13, 0, -k31, 0, 0, 0],
+                              [ke0, 0, 0, -ke0, 0, 0],
+                              [ke1_map, 0, 0, 0, -ke1_map, 0],
+                              [ke2_map, 0, 0, 0, 0, -ke2_map]])/60  # 1/s
 
-                B = np.transpose(np.array([[1/v1, 0, 0, 0]]))  # 1/L
+                B = np.transpose(np.array([[1/v1, 0, 0, 0, 0, 0]]))  # 1/L
             else:
                 A = A_nom
                 B = B_nom
-        elif drug == 'Epinephrine' or drug == 'Norepinephrine':
+        elif drug == 'Remifentanil':
+            # drug amount transfer rates [1/min]
+            k10 = cl1 / v1
+            k12 = cl2 / v1
+            k13 = cl3 / v1
+            k21 = cl2 / v2
+            k31 = cl3 / v3
+
+            # Nominal Matrices system definition
+            A_nom = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0],
+                              [k12, -k21, 0, 0, 0],
+                              [k13, 0, -k31, 0, 0],
+                              [ke0, 0, 0, -ke0, 0],
+                              [ke_map, 0, 0, 0, -ke_map]])/60  # 1/s
+
+            B_nom = np.transpose(np.array([[1/v1, 0, 0, 0, 0]]))  # 1/L
+            C = np.array([[0, 0, 0, 1, 0]])
+            D = np.array([[0]])
+
+            # Introduce inter-patient variability
+            if random is True:
+                if model == 'Marsh':
+                    print("Warning: the standard deviation of the Marsh model are not know," +
+                          " it is set to 100% for each variable")
+
+                v1 *= np.exp(np.random.normal(scale=w_v1))
+                v2 *= np.exp(np.random.normal(scale=w_v2))
+                v3 *= np.exp(np.random.normal(scale=w_v3))
+                cl1 *= np.exp(np.random.normal(scale=w_cl1))
+                cl2 *= np.exp(np.random.normal(scale=w_cl2))
+                cl3 *= np.exp(np.random.normal(scale=w_cl3))
+                ke0 *= np.exp(np.random.normal(scale=w_ke0))
+                ke_map *= np.exp(np.random.normal(scale=w_ke_map))
+                A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0],
+                              [k12, -k21, 0, 0, 0],
+                              [k13, 0, -k31, 0, 0],
+                              [ke0, 0, 0, -ke0, 0],
+                              [ke_map, 0, 0, 0, -ke_map]])/60  # 1/s
+
+                B = np.transpose(np.array([[1/v1, 0, 0, 0, 0]]))  # 1/L
+            else:
+                A = A_nom
+                B = B_nom
+        elif drug == 'Norepinephrine':
             # drug amount transfer rates [1/min]
             k10 = cl1 / v1
 
