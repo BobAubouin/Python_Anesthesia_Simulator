@@ -11,7 +11,7 @@ import pandas as pd
 import casadi as cas
 # Local imports
 from .pk_models import CompartmentModel
-from .pd_models import BIS_model, TOL_model, fsig
+from .pd_models import BIS_model, TOL_model, Hemo_PD_model, fsig
 
 
 class Patient:
@@ -28,7 +28,7 @@ class Patient:
                  random_PK: bool = False,
                  random_PD: bool = False,
                  co_update: bool = False,
-                 save_data: bool = True):
+                 save_data_bool: bool = True):
         """
         Initialise a patient class for anesthesia simulation.
 
@@ -56,6 +56,8 @@ class Patient:
             Add uncertainties in the BIS PD model. The default is False.
         co_update : bool, optional
             Turn on the option to update PK parameters thanks to the CO value. The default is False.
+        save_data_bool : bool, optional
+            Save all interns variable at each sampling time in a data frame. The default is True.
 
         Returns
         -------
@@ -75,7 +77,7 @@ class Patient:
         self.random_PK = random_PK
         self.random_PD = random_PD
         self.co_update = co_update
-        self.save_data = save_data
+        self.save_data_bool = save_data_bool
 
         # LBM computation
         if self.gender == 1:  # homme
@@ -100,6 +102,9 @@ class Patient:
         # Init PD model for TOL
         self.tol_pd = TOL_model(model='Bouillon', random=random_PD)
 
+        # Init PD model for Hemodynamic
+        self.hemo_pd = Hemo_PD_model(random=random_PD, co_base=co_base, map_base=map_base)
+
         # init blood loss constant
         self.blood_loss_tf = control.tf([1], [60, 1])
         self.blood_loss_tfd = control.sample_system(self.blood_loss_tf, self.ts)
@@ -118,8 +123,8 @@ class Patient:
         self.map = map_base
         self.co = co_base
 
-        # Save data ?
-        if self.save_data:
+        # Save data
+        if self.save_data_bool:
             # Time variable which will be stored
             self.Time = 0
             column_names = ['Time',  # time
@@ -131,7 +136,7 @@ class Patient:
 
             self.dataframe = pd.DataFrame(columns=column_names)
 
-    def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0, uS: float = 0, uD: float = 0,
+    def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
                  Dist: list = [0]*3, noise: bool = True) -> list:
         """
         Simulate one step time of the patient.
@@ -144,19 +149,15 @@ class Patient:
             Remifentanil infusion rate (µg/s). The default is 0.
         u_nore : float, optional
             Norepinephrine infusion rate (µg/s). The default is 0.
-        uS : float, optional
-            Sodium Nitroprucide rate (mg/s). The default is 0.
-        uD : float, optional
-            Dopamine rate (µg/s). The defauls is 0.
         Dist : list, optional
             Disturbance vector on [BIS (%), MAP (mmHg), CO (L/min)]. The default is [0]*3.
         noise : bool, optional
-            bool to add measurement n noise on the outputs. The default is True.
+            bool to add measurement noise on the outputs. The default is True.
 
         Returns
         -------
         output : list
-            [BIS, MAP, CO] : current BIS (%), MAP (mmHg) ,and CO (L/min)
+            [BIS, MAP, CO, TOL] : current BIS (%), MAP (mmHg) ,and CO (L/min), TOL (%)
 
         """
         # compute PK model
@@ -168,7 +169,7 @@ class Patient:
         # TOL
         self.tol = self.tol_pd.compute_tol(self.c_es_propo, self.c_es_remi)
         # Hemodynamic
-
+        self.map, self.co = self.hemo_pd.compute_hemo(self.propo_pk.x[4:], self.remi_pk.x[4], self.c_blood_nore)
         # disturbances
         self.bis += Dist[0]
         self.map += Dist[1]
@@ -186,34 +187,15 @@ class Patient:
             self.map += np.random.normal(scale=0.5)
             self.co += np.random.normal(scale=0.1)
 
-        # Save data ?
-        if self.save_data:
-            # compute time
-            self.Time += self.ts
-            # store data
-
-            new_line = {'Time': self.Time,
-                        'BIS': self.bis, 'TOL': self.tol, 'MAP': self.map, 'CO': self.co,  # outputs
-                        'u_propo': u_propo, 'u_remi': u_remi, 'u_nore': u_nore, 'u_snp': uS,  # inputs
-                        'c_blood_nore': self.c_blood_nore}  # concentration
-
-            line_x_propo = {'x_propo_' + str(i+1): self.propo_pk.x[i] for i in range(4)}
-            line_x_remi = {'x_remi_' + str(i+1): self.remi_pk.x[i] for i in range(4)}
-            # line_x_g11 = {'x_hemo_g11_' + str(i+1): self.Hemo.x11[i, 0] for i in range(len(self.Hemo.x11))}
-            # line_x_g12 = {'x_hemo_g12_' + str(i+1): self.Hemo.x12[i, 0] for i in range(len(self.Hemo.x12))}
-            # line_x_g21 = {'x_hemo_g21_' + str(i+1): self.Hemo.x21[i, 0] for i in range(len(self.Hemo.x21))}
-            # line_x_g22 = {'x_hemo_g22_' + str(i+1): self.Hemo.x22[i, 0] for i in range(len(self.Hemo.x22))}
-            new_line.update(line_x_propo)
-            new_line.update(line_x_remi)
-
-            self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line)), ignore_index=True)
+        # Save data
+        if self.save_data_bool:
+            self.save_data([u_propo, u_remi, u_nore])
 
         return([self.bis, self.co, self.map, self.tol])
 
-    def find_equilibrium(self, bis_target: float, tol_target: float, map_target: float,
-                         co_target: float) -> list:
+    def find_equilibrium(self, bis_target: float, tol_target: float, map_target: float) -> list:
         """
-        Find the input to meet the targeted output at the equilibrium.
+        Find the input to meet the targeted outputs at the equilibrium.
 
         Parameters
         ----------
@@ -223,8 +205,7 @@ class Patient:
             TOL target ([0, 1]).
         map_target:float
             MAP target (mmHg).
-        co_target : float
-            CO target (L/min).
+
         Returns
         -------
         list
@@ -263,17 +244,28 @@ class Patient:
         self.c_blood_propo_eq = w_opt[0]
         self.c_blood_remi_eq = w_opt[1]
 
-        # get Dopamine and Sodium nitroprusside from CO and MAP target
-
+        # get Norepinephrine rate from MAP target
+        # first compute the effect of propofol and remifentanil on MAP
+        map_without_nore, co_without_nore = self.hemo_pd.compute_hemo([self.c_blood_propo_eq, self.c_blood_propo_eq],
+                                                                      self.c_blood_remi_eq, 0)
+        # Then compute the right nore concentration to meet the MAP target
+        wanted_map_effect = map_without_nore - map_target
+        self.c_blood_nore_eq = self.hemo_pd.c50_nor_map * (wanted_map_effect /
+                                                           (self.hemo_pd.emax_nor_map-wanted_map_effect)
+                                                           )**(1/self.hemo_pd.gamma_nor_map)
+        _, self.co_eq = self.hemo_pd.compute_hemo([self.c_blood_propo_eq, self.c_blood_propo_eq],
+                                                  self.c_blood_remi_eq, self.c_blood_nore_eq)
         # update pharmacokinetics model from co value
         if self.co_update:
             self.propo_pk.update_param_CO(self.co_eq/self.co_base)
             self.remi_pk.update_param_CO(self.co_eq/self.co_base)
+            self.nore_pk.update_param_CO(self.co_eq/self.co_base)
         # get rate input
         self.u_propo_eq = self.c_blood_propo_eq / control.dcgain(self.propo_pk.continuous_sys)
         self.u_remi_eq = self.c_blood_remi_eq / control.dcgain(self.remi_pk.continuous_sys)
+        self.u_nore_eq = self.c_blood_nore_eq / control.dcgain(self.nore_pk.continuous_sys)
 
-        return self.u_propo_eq, self.u_remi_eq
+        return self.u_propo_eq, self.u_remi_eq, self.u_nore_eq
 
     def initialized_at_given_input(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
                                    us: float = 0, ua: float = 0):
@@ -288,12 +280,6 @@ class Patient:
             Remifentanil infusion rate (µg/s). The default is 0.
         u_nore : float, optional
             Norepinephrine infusion rate (µg/s). The default is 0.
-        uS : float, optional
-            Sodium Nitroprucide rate (mg/s). The default is 0.
-        us : float, optional
-            Sodium Nitroprucide rate (µg/s). The default is 0.
-        ua : float, optional
-            Atracium infusion rate (µg/s). The default is 0.
 
         Returns
         -------
@@ -403,3 +389,21 @@ class Patient:
         # Update the models
         self.PropoPK.update_coeff_blood_loss(v_loss=self.v_loss - self.v_trans, mode=mode)
         self.RemiPK.update_coeff_blood_loss(v_loss=self.v_loss - self.v_trans, mode=mode)
+
+    def save_data(self, inputs: list = [0, 0, 0]):
+        """Save all current intern variable as a new line in self.dataframe."""
+        # compute time
+        self.Time += self.ts
+        # store data
+
+        new_line = {'Time': self.Time,
+                    'BIS': self.bis, 'TOL': self.tol, 'MAP': self.map, 'CO': self.co,  # outputs
+                    'u_propo': inputs[0], 'u_remi': inputs[1], 'u_nore': inputs[2],  # inputs
+                    'c_blood_nore': self.c_blood_nore}  # concentration
+
+        line_x_propo = {'x_propo_' + str(i+1): self.propo_pk.x[i] for i in range(6)}
+        line_x_remi = {'x_remi_' + str(i+1): self.remi_pk.x[i] for i in range(5)}
+        new_line.update(line_x_propo)
+        new_line.update(line_x_remi)
+
+        self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line)), ignore_index=True)
