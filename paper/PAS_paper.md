@@ -31,11 +31,11 @@ bibliography: bibli.bib
 
 # Summary
 
-The Python Anesthesia Simulator (PAS) models the effect of drugs on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrug controllers. The available drugs are Propofol, Remifentanil, and Norepinephrine, the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO), and Tolerance of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate inter-patient variability. Blood loss can also be simulated to assess the controller performance in a shock scenario. Finally, PAS includes standard disturbance profiles and metrics computation to facilitate the evaluation of controllers performances. The statement of need of this package is first discussed, then some model informations are provided to the reader. The future developments of the package are discussed at the end.
+The Python Anesthesia Simulator (PAS) models the effect of drugs on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrug controllers. The available drugs are Propofol, Remifentanil, and Norepinephrine, the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO), and Tolerance of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate inter-patient variability. Blood loss can also be simulated to assess the controller's performance in a shock scenario. Finally, PAS includes standard disturbance profiles and metrics computation to facilitate the evaluation of the controller's performances. The statement of need of this package is first discussed, then some pieces of information about the programmed models are provided to the reader. The future developments of the package are discussed at the end.
 
 # Statement of need
 
-Closing the loop for drug dosage during general anesthesia is a challenging task which keeps the attention of the control community for more than two decades. In fact, the high need for reliability coupled with a highly uncertain system makes the design of a controller an arduous work. Thus, numerous closed-loop control strategies have been proposed and reviewed in @ilyasReviewModernControl2017, @copotAutomatedDrugDelivery2020, @singhArtificialIntelligenceAnesthesia2022, and @ghitaClosedLoopControlAnesthesia2020 for instance. 
+Closing the loop for drug dosage during general anesthesia is a challenging task which keeps the attention of the control community for more than two decades. In fact, the high need for reliability coupled with a highly uncertain system makes the design of a controller arduous work. Thus, numerous closed-loop control strategies have been proposed and reviewed in @ilyasReviewModernControl2017, @copotAutomatedDrugDelivery2020, @singhArtificialIntelligenceAnesthesia2022, and @ghitaClosedLoopControlAnesthesia2020 for instance. 
 
 
 Because it is a long-term process to clinically test a control method for drug injection, a lot of papers only rely on simulations to demonstrate the advantages of their proposition. However, two meta-studies agree on the fact that automated control during anesthesia brings better stability to the physiological signals during the procedure @brogiClinicalPerformanceSafety2017, @puriMulticenterEvaluationClosedLoop2016. Since the methods were first tested on simulation and obtained then good performances in clinical situations it could be concluded that simulations are realistic enough to be used as a first test.
@@ -66,43 +66,43 @@ In PAS all drugs effect are described by the well know Pharmacokinetic-Pharmacod
 
 ## Pharmacokinetic
 
-The standard way to model Pharmacokinetic of drugs is to used compartments model. Both Propofol and Remifentanil have been studied in many clinical trials and 3-comparments model is considered as the standard way to model those drugs parmacokinetics and also the way it is implemented in PAS.  Population The different population model available are listed beloow:
+The standard way to model the Pharmacokinetic of drugs is to use a compartments model. Both Propofol and Remifentanil have been studied in many clinical trials and the 3-compartments model is considered as the standard way to model those drugs pharmacokinetics and also the way it is implemented in PAS.  Population The different population models available are listed below:
 
-- For Propofol: @schniderInfluenceAgePropofol1999, @marshPharmacokineticModelDriven1991, Marsh model with modified time constant for the effect site compartment [@struysComparisonPlasmaCompartment2000],  @schuttlerPopulationPharmacokineticsPropofol2000 and  @eleveldPharmacokineticPharmacodynamicModel2018.
+- For Propofol: @schniderInfluenceAgePropofol1999, @marshPharmacokineticModelDriven1991, Marsh model with the modified time constant for the effect site compartment [@struysComparisonPlasmaCompartment2000],  @schuttlerPopulationPharmacokineticsPropofol2000 and  @eleveldPharmacokineticPharmacodynamicModel2018.
 
 - For Remifentanil: @mintoInfluenceAgeGender1997 and @eleveldAllometricModelRemifentanil2017.
 
 
-For Norepinephrine clinical trial are rarer and usually only one comparment is used to model the distribution of those drugs in blood. In PAS the model from @beloeilNorepinephrineKineticsDynamics2005 is programmed.
+Norepinephrine clinical trials are rarer and usually, only one compartment is used to model the distribution of those drugs in blood. In PAS the model from @beloeilNorepinephrineKineticsDynamics2005 is programmed.
 
-Several studies have shown the influence of Cardiac Output (CO) on the pharmacokinetic of Propofol [@uptonCardiacOutputDeterminant1999; @kuritaInfluenceCardiacOutput2002; @adachiDeterminantsPropofolInduction2001]. In @bienertInfluenceCardiacOutput2020 the authors proposed the assumption that the clearance rate of Propofol and Fentanil could be proportionnal to CO resulting in non-constant clearance rate. In the simulator the same assumption is made for the Propofol and extended to Remifentanil, Epinephrine and Norepinephrine clearance rates PK. It can be activated or desactivated to simulate the interaction between CO and the hypnotic system.
+Several studies have shown the influence of Cardiac Output (CO) on the pharmacokinetics of Propofol [@uptonCardiacOutputDeterminant1999; @kuritaInfluenceCardiacOutput2002; @adachiDeterminantsPropofolInduction2001]. In @bienertInfluenceCardiacOutput2020 the authors proposed the assumption that the clearance rate of Propofol and Fentanil could be proportional to CO resulting in a non-constant clearance rate. In the simulator, the same assumption is made for the Propofol and extended to Remifentanil and, Norepinephrine clearance rates PK. It can be activated or deactivated to simulate the interaction between CO and the PK systems.
 
-Blood loss is known to change the distribution of drug in the body [@johnsonInfluenceHemorrhagicShock2001; @kuritaInfluenceHemorrhagicShock2009a; @johnsonInfluenceHemorrhagicShock2003]. In fact, the reduce volume of blood will impact the PK system of the drugs. Thus, during blood loss simulation the blood volume is updated in all the PK model to represent the remaining fraction of remaining blood volume. As blood loss also strongly impact the hemodynamic system and a decrease in blood volume often leads to a decrease of, the clearance rates of the PK system will also decrease.
+Blood loss is known to change the distribution of drugs in the body [@johnsonInfluenceHemorrhagicShock2001; @kuritaInfluenceHemorrhagicShock2009a; @johnsonInfluenceHemorrhagicShock2003]. In fact, the reduced volume of blood will impact the PK system of the drugs. Thus, during blood loss simulation the blood volume is updated in all the PK models to represent the remaining fraction of the remaining blood volume. As blood loss also strongly impacts the hemodynamic system and a decrease in blood volume often leads to a decrease, the clearance rates of the PK system will also decrease.
 
 ## Pharmacodynamic
 
-Pharmacodynamics model describe the link between drug concentration and the observed effect on physiological variable. In PAS, the considered variable are the Bispectral Index (BIS) to characterize the hypnotic system, Mean Arterial Presure (MAP) and Cardiac Output (CO) for the hemodynamic system and Tolerance of Laryngoscopy (TOL) as an analgesia indicator. Unlike @ionescuOpenSourcePatient2021a which used Richmond Agitation Sedation Scale (RASS) to assess analgesia, TOL was choosen due to the availability of more clinical sutides on this index. Since this output does not affect the system another index could be programmed to replace it.
+Pharmacodynamics models describe the link between drug concentration and the observed effect on physiological variables. In PAS, the considered variable are Bispectral Index (BIS) to characterize the hypnotic system, Mean Arterial Pressure (MAP) and Cardiac Output (CO) for the hemodynamic system, and Tolerance of Laryngoscopy (TOL) as an analgesia indicator. Unlike @ionescuOpenSourcePatient2021a which used Richmond Agitation Sedation Scale (RASS) to assess analgesia, TOL was chosen due to the availability of more clinical studies on this index. Since this output does not affect the system another index could be programmed to replace it.
 
-The standard way to model pharmacodynamics is to consider a delay between a rise in blood concentration and the appearance of the physiological effect by adding an *effect site* compartments. Then a hill cruve is used to model the relation between the effect site drug concentration and the dedicated effect.
+The standard way to model pharmacodynamics is to consider a delay between a rise in blood concentration and the appearance of the physiological effect by adding an *effect site* compartments. Then a hill curve is used to model the relation between the effect site drug concentration and the dedicated effect.
 
-For BIS and TOL, PAS include 3D hill curves to model the synergical effect of Propofol and Remifentanil with the value from @bouillonPharmacodynamicInteractionPropofol2004. 
+For BIS and TOL, PAS includes a surface-response model to represent the synergic effect of Propofol and Remifentanil with the value from @bouillonPharmacodynamicInteractionPropofol2004. 
 
-For MAP and CO, the interaction between drugs have not been studied yet. Thus the effect of each drug is added to obtain the overall treatment effect:
+For MAP and CO, the interaction between drugs has not been studied yet. Thus the effect of each drug is added to obtain the overall treatment effect:
 
-- For Propofol the value from @jeleazcovPharmacodynamicResponseModelling2015 where used for MAP. For CO, experimentals value from @fairfieldHAEMODYNAMICEFFECTSPROPOFOL1991.
+- For Propofol the value from @jeleazcovPharmacodynamicResponseModelling2015 where used for MAP. For CO, experimental values from @fairfieldHAEMODYNAMICEFFECTSPROPOFOL1991.
 
-- For Remifentanil only study in infants where found, the parameters from  @standingPharmacokineticPharmacodynamicModeling2010b where used for MAP effect and experimentals results from @chanavazHaemodynamicEffectsRemifentanil2005 for CO effect.
+- For Remifentanil only study in infants where found, the parameters from  @standingPharmacokineticPharmacodynamicModeling2010b were used for the MAP effect, and, experimental results from @chanavazHaemodynamicEffectsRemifentanil2005 for the CO effect.
 
-- For Norepinephrine the value from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance to the PK model. For the impact on CO we extrapolate value from @monnetNorepinephrineIncreasesCardiac2011.
+- For Norepinephrine the values from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance with the PK model. For the impact on CO, we extrapolate value from @monnetNorepinephrineIncreasesCardiac2011.
 
-Note that for the effect of all drugs on CO, there is no study proposing a Hill curve. Thus the hill curve parameters where computed to match experimental results.
+Note that for the effect of all drugs on CO, there is no study proposing a Hill curve. Thus the hill curve parameters were computed to match experimental results.
 
 # Conclusion and Future development
 As shown in the available examples included in PAS, many functions are implemented to help further research on drug control during anesthesia. This package provides a full pipeline to design and test multidrug controllers on a wide variety of scenarios. In the future many improvements can be imagined to develop PAS:
 
 - Other drugs or models could be added;
 
-- Neuromuscular blockade system could be implemented as this is an important component of anesthesia paradigm;
+- Neuromuscular blockade system could be implemented as this is an important component of the anesthesia paradigm;
 
 - A more physiological model for the hemodynamic system could be proposed to better link CO and MAP and eventually add Heart Rate as an output variable;
 
@@ -115,6 +115,6 @@ Input from the community is welcome, in particular, to implement a physiological
 
 # Acknowledgements
 
-This work has been partially supported by the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01) funded by the *French program Investissement d’avenir*. The authors also wants to thanks Mathias Réus for his help on practical Python programming and packaging.
+This work has been partially supported by the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01) funded by the *French program Investissement d’avenir*. The authors also thank Mathias Réus for his help with practical Python programming and packaging.
 
 # References
