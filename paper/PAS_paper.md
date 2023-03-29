@@ -85,7 +85,7 @@ Pharmacodynamics models describe the link between drug concentration and the obs
 
 The standard way to model pharmacodynamics is to consider a delay between a rise in blood concentration and the appearance of the physiological effect by adding an *effect site* compartments. Then a hill curve is used to model the relation between the effect site drug concentration and the dedicated effect.
 
-For BIS and TOL, PAS includes a surface-response model to represent the synergic effect of Propofol and Remifentanil with the value from @bouillonPharmacodynamicInteractionPropofol2004. 
+For BIS and TOL, PAS includes respectively a surface-response model and a hierarchical model to represent the synergic effect of Propofol and Remifentanil with values from @bouillonPharmacodynamicInteractionPropofol2004. 
 
 For MAP and CO, the interaction between drugs has not been studied yet. Thus the effect of each drug is added to obtain the overall treatment effect:
 
@@ -95,7 +95,11 @@ For MAP and CO, the interaction between drugs has not been studied yet. Thus the
 
 - For Norepinephrine the values from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance with the PK model. For the impact on CO, we extrapolate value from @monnetNorepinephrineIncreasesCardiac2011.
 
-Note that for the effect of all drugs on CO, there is no study proposing a Hill curve. Thus the hill curve parameters were computed to match experimental results.
+Note that for the effect of all drugs on CO, there is no study proposing a hill curve. Thus the hill curve parameters were computed to match experimental results.
+
+## Blood loss
+In addition to the effect of blood loss in the Pk systems. The very crude assumption that MAP and CO are proportional to the blood volume has been made in the simulator. The transient comportment of bleeding and transfusion does not verify this assumption however the steady-state experimental values do agree with it [@rinehartEvaluationNovelClosedloop2011]. A more complex Hemodynamic model should be integrated to obtain better results. The simulator also takes into account the fact that the BIS pharmacodynamic depends on bleeding [@kuritaInfluenceHemorrhagicShock2009a] leading to a deeper hypnosis state. 
+
 
 # Conclusion and Future development
 As shown in the available examples included in PAS, many functions are implemented to help further research on drug control during anesthesia. This package provides a full pipeline to design and test multidrug controllers on a wide variety of scenarios. In the future many improvements can be imagined to develop PAS:
