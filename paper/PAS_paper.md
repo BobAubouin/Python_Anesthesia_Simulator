@@ -89,12 +89,13 @@ For BIS and TOL, PAS include 3D hill curves to model the synergical effect of Pr
 
 For MAP and CO, the interaction between drugs have not been studied yet. Thus the effect of each drug is added to obtain the overall treatment effect:
 
-- For Propofol the value from where used for MAP. For CO, we chosed to not consider the effect of propofol sinced they are negligible [@dewitEffectPropofolHaemodynamics2016]. However the interaction programmed in the simulator and the value can be changed to model this interaction.
+- For Propofol the value from @jeleazcovPharmacodynamicResponseModelling2015 where used for MAP. For CO, experimentals value from @fairfieldHAEMODYNAMICEFFECTSPROPOFOL1991.
 
-- For Remifentanil 
+- For Remifentanil only study in infants where found, the parameters from  @standingPharmacokineticPharmacodynamicModeling2010b where used for MAP effect and experimentals results from @chanavazHaemodynamicEffectsRemifentanil2005 for CO effect.
 
-- For Norepinephrine the value from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance to the PK model. For the impact on Cardiac Output we extrapolate value from @hamzaouiEarlyAdministrationNorepinephrine2010.
+- For Norepinephrine the value from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance to the PK model. For the impact on CO we extrapolate value from @monnetNorepinephrineIncreasesCardiac2011.
 
+Note that for the effect of all drugs on CO, there is no study proposing a Hill curve. Thus the hill curve parameters where computed to match experimental results.
 
 # Conclusion and Future development
 As shown in the available examples included in PAS, many functions are implemented to help further research on drug control during anesthesia. This package provides a full pipeline to design and test multidrug controllers on a wide variety of scenarios. In the future many improvements can be imagined to develop PAS:
