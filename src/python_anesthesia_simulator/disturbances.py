@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Mon Oct 10 09:47:10 2022
 
@@ -31,6 +29,11 @@ def compute_disturbances(time: float, dist_profil: str = 'realistic',
 
     """
     if dist_profil == 'realistic':
+        # As proposed in M. M. R. F. Struys, T. De Smet, S. Greenwald, A. R. Absalom, S. Bingé, and E. P. Mortier,
+        # “Performance Evaluation of Two Published Closed-loop Control Systems Using Bispectral Index Monitoring:
+        #  A Simulation Study,”
+        # Anesthesiology, vol. 100, no. 3, pp. 640–647, Mar. 2004, doi: 10.1097/00000542-200403000-00026.
+
         Disturb_point = np.array([[0,     0,  0, 0],  # time, BIS signal, MAP, CO signals
                                   [9.9,   0,  0, 0],
                                   [10,   20, 10, 0.6],
@@ -58,6 +61,11 @@ def compute_disturbances(time: float, dist_profil: str = 'realistic',
                                   [56,   10,  5, 0.2],
                                   [56.5,  0,  0, 0]])
     elif dist_profil == 'simple':
+        # As in G. A. Dumont, A. Martinez, and J. M. Ansermino,
+        # “Robust control of depth of anesthesia,”
+        # International Journal of Adaptive Control and Signal Processing,
+        # vol. 23, no. 5, pp. 435–454, 2009, doi: 10.1002/acs.1087.
+
         Disturb_point = np.array([[0,     0,  0, 0],  # time, BIS signal, MAP, CO signals
                                   [19.9,  0,  0, 0],
                                   [20,   20,  5, 0.3],

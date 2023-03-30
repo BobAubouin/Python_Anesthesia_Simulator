@@ -134,7 +134,7 @@ class BIS_model:
         # and Pharmacodynamic Analysis,” Anesthesiology, vol. 99, no. 2, pp. 409–420, Aug. 2003,
         # doi: 10.1097/00000542-200308000-00023.
 
-        self.c50r = self.c50p_init - 3/0.5*(1-v_ratio)
+        self.c50p = self.c50p_init - 3/0.5*(1-v_ratio)
 
     def inverse_hill(self, BIS: float, cer: float = 0) -> float:
         """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration.
