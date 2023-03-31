@@ -8,7 +8,7 @@ Created on Thu Feb  2 16:32:20 2023
 
 import numpy as np
 import matplotlib.pyplot as plt
-from src.python_anesthesia_simulator import simulator
+from python_anesthesia_simulator import simulator
 
 
 Ts = 120

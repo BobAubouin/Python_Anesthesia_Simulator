@@ -8,7 +8,7 @@ import control
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.linalg import block_diag
-from src.python_anesthesia_simulator import simulator, pd_models, disturbances, metrics
+from python_anesthesia_simulator import simulator, pd_models, disturbances, metrics
 
 ts = 60
 age = 35

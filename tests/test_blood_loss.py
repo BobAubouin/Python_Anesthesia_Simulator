@@ -5,11 +5,11 @@ Created on Thu Feb  2 16:32:20 2023
 
 @author: aubouinb
 """
-
+# %% Import
 import matplotlib.pyplot as plt
-from src.python_anesthesia_simulator import simulator
+from python_anesthesia_simulator import simulator
 
-
+# %% Initialization patient 
 ts = 5
 age, height, weight, gender = 74, 164, 88, 1
 George = simulator.Patient([age, height, weight, gender], ts=ts,
@@ -18,7 +18,6 @@ George = simulator.Patient([age, height, weight, gender], ts=ts,
 # %% Simulation
 
 N_simu = int(60 * 60/ts)
-
 
 uP, uR, uN = 0.15, 0.1, 2
 George.initialized_at_given_input(u_propo=uP, u_remi=uR, u_nore=uN)
