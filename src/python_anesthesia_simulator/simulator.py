@@ -117,17 +117,7 @@ class Patient:
 
         # Save data
         if self.save_data_bool:
-            # Time variable which will be stored
-            self.c_blood_nore = [0]
-            self.Time = 0
-            column_names = ['Time',  # time
-                            'BIS', 'TOL', 'MAP', 'CO',  # outputs
-                            'u_propo', 'u_remi', 'u_nore',  # inputs
-                            'x_propo_1', 'x_propo_2', 'x_propo_3', 'x_propo_4', 'x_propo_5', 'x_propo_6',  # x_PK_propo
-                            'x_remi_1', 'x_remi_2', 'x_remi_3', 'x_remi_4', 'x_remi_5',  # x_PK_remi
-                            'c_blood_nore', 'v_blood']  # nore concentration and blood volume
-
-            self.dataframe = pd.DataFrame(columns=column_names)
+            self.init_dataframe()
 
     def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
                  blood_rate: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
@@ -197,7 +187,8 @@ class Patient:
 
         return([self.bis, self.co, self.map, self.tol])
 
-    def find_equilibrium(self, bis_target: float, tol_target: float, map_target: float) -> list:
+    def find_equilibrium(self, bis_target: float, tol_target: float,
+                         map_target: float) -> tuple[float, float, float]:
         """
         Find the input to meet the targeted outputs at the equilibrium.
 
@@ -212,9 +203,12 @@ class Patient:
 
         Returns
         -------
-        list
-            list of input [up, ur, ud, us, ua] with the respective units [mg/s, µg/s, µg/s, µg/s, µg/s].
-
+        u_propo : float:
+            Propofol infusion rate (mg/s).
+        u_remi : float:
+            Remifentanil infusion rate (µg/s).
+        u_nore : float:
+            Norepinephrine infusion rate (µg/s).
         """
         # find Remifentanil and Propofol Concentration from BIS and TOL
         cep = cas.MX.sym('cep')  # effect site concentration of propofol in the optimization problem
@@ -260,6 +254,67 @@ class Patient:
 
         return self.u_propo_eq, self.u_remi_eq, self.u_nore_eq
 
+    def find_bis_equilibrium_with_ratio(self, bis_target: float,
+                                        rp_ratio: float = 2) -> tuple[float, float]:
+        """
+        Find the input to meet the targeted outputs at the equilibrium.
+
+        Parameters
+        ----------
+        bis_target : float
+            BIS target (%).
+        rp_ratio : float
+            remifentanil over propofol rates ratio. The default is 2.
+
+        Returns
+        -------
+        u_propo : float:
+            Propofol infusion rate (mg/s).
+        u_remi : float:
+            Remifentanil infusion rate (µg/s).
+        """
+        # solve the optimization problem
+        w = []
+        w0 = []
+        lbw = []
+        ubw = []
+        J = 0
+        g = []
+        lbg = []
+        ubg = []
+
+        Ap = self.propo_pk.continuous_sys.A
+        Bp = self.propo_pk.continuous_sys.B
+        Ar = self.remi_pk.continuous_sys.A
+        Br = self.remi_pk.continuous_sys.B
+
+        x0p = np.linalg.solve(Ap, Bp * 7 / 20)
+        x0r = np.linalg.solve(Ar, Br * 7 / 10)
+        xp = cas.MX.sym('xp', 6)
+        w0 += x0p[:, 0].tolist()
+        xr = cas.MX.sym('xr', 5)
+        w0 += x0r[:, 0].tolist()
+        UP = cas.MX.sym('up', 1)
+        w = [xp, xr, UP]
+        w0 += [7 / 2]
+        lbw = [1e-6] * 12
+        ubw = [1e4] * 12
+
+        bis = self.bis_pd.compute_bis(xp[3], xr[3])
+        J = (bis_target - bis)**2
+
+        g = [Ap @ xp + Bp * UP, Ar @ xr + Br * (rp_ratio * UP)]
+        lbg = [-1e-8] * 11
+        ubg = [1e-8] * 11
+        opts = {'ipopt.print_level': 0, 'print_time': 0}
+        prob = {'f': J, 'x': cas.vertcat(*w), 'g': cas.vertcat(*g)}
+        solver = cas.nlpsol('solver', 'ipopt', prob, opts)
+        sol = solver(x0=w0, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
+        w_opt = sol['x'].full().flatten()
+        self.u_propo_eq = w_opt[-1]
+        self.u_remi_eq = rp_ratio * self.u_propo_eq
+        return self.u_propo_eq, self.u_remi_eq
+
     def initialized_at_given_input(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0):
         """
         Initialize the patient Simulator at the given input as an equilibrium point.
@@ -295,8 +350,19 @@ class Patient:
 
         x_init_nore = np.linalg.solve(-self.nore_pk.continuous_sys.A, self.nore_pk.continuous_sys.B * u_nore)
         self.nore_pk.x = x_init_nore
+        if self.save_data_bool:
+            self.init_dataframe()
+            # recompute output variable
+            # BIS
+            self.bis = self.bis_pd.compute_bis(self.propo_pk.x[3], self.remi_pk.x[3])
+            # TOL
+            self.tol = self.tol_pd.compute_tol(self.propo_pk.x[3], self.remi_pk.x[3])
+            # Hemodynamic
+            self.map, self.co = self.hemo_pd.compute_hemo(self.propo_pk.x[4:], self.remi_pk.x[4], self.nore_pk.x[0])
+            self.save_data()
 
-    def initialized_at_maintenance(self, bis_target: float, tol_target: float, map_target: float):
+    def initialized_at_maintenance(self, bis_target: float, tol_target: float,
+                                   map_target: float) -> tuple[float, float, float]:
         """Initialize the patient model at the equilibrium point for the given output value.
 
         Parameters
@@ -310,8 +376,12 @@ class Patient:
 
         Returns
         -------
-        None.
-
+        u_propo : float:
+            Propofol infusion rate (mg/s).
+        u_remi : float:
+            Remifentanil infusion rate (µg/s).
+        u_nore : float:
+            Norepinephrine infusion rate (µg/s).
         """
         # Find equilibrium point
 
@@ -322,6 +392,7 @@ class Patient:
         self.initialized_at_given_input(u_propo=self.u_propo_eq,
                                         u_remi=self.u_remi_eq,
                                         u_nore=self.u_nore_eq)
+        return self.u_propo_eq, self.u_remi_eq, self.u_nore_eq
 
     def blood_loss(self, fluid_rate: float = 0):
         """Actualize the patient parameters to mimic blood loss.
@@ -347,6 +418,18 @@ class Patient:
         self.nore_pk.update_param_blood_loss(self.blood_volume/self.blood_volume_init)
         self.bis_pd.update_param_blood_loss(self.blood_volume/self.blood_volume_init)
 
+    def init_dataframe(self):
+        """Initilize the dataframe variable."""
+        self.Time = 0
+        column_names = ['Time',  # time
+                        'BIS', 'TOL', 'MAP', 'CO',  # outputs
+                        'u_propo', 'u_remi', 'u_nore',  # inputs
+                        'x_propo_1', 'x_propo_2', 'x_propo_3', 'x_propo_4', 'x_propo_5', 'x_propo_6',  # x_PK_propo
+                        'x_remi_1', 'x_remi_2', 'x_remi_3', 'x_remi_4', 'x_remi_5',  # x_PK_remi
+                        'c_blood_nore', 'blood_volume']  # nore concentration and blood volume
+
+        self.dataframe = pd.DataFrame(columns=column_names)
+
     def save_data(self, inputs: list = [0, 0, 0]):
         """Save all current intern variable as a new line in self.dataframe."""
         # store data
@@ -354,7 +437,7 @@ class Patient:
         new_line = {'Time': self.Time,
                     'BIS': self.bis, 'TOL': self.tol, 'MAP': self.map, 'CO': self.co,  # outputs
                     'u_propo': inputs[0], 'u_remi': inputs[1], 'u_nore': inputs[2],  # inputs
-                    'c_blood_nore': self.c_blood_nore, 'v_blood': self.blood_volume}  # concentration and blood volume
+                    'c_blood_nore': self.nore_pk.x[0], 'blood_volume': self.blood_volume}  # concentration and blood volume
 
         line_x_propo = {'x_propo_' + str(i+1): self.propo_pk.x[i] for i in range(6)}
         line_x_remi = {'x_remi_' + str(i+1): self.remi_pk.x[i] for i in range(5)}
