@@ -6,7 +6,7 @@ Created on Mon Oct 10 09:47:11 2022
 import numpy as np
 
 
-def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance',
+def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
                             start_step: float = 600, end_step: float = 1200):
     """Compute metrics for closed loop anesthesia.
 
@@ -18,9 +18,11 @@ def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance'
 
     Parameters
     ----------
-    Bis : liste
-        Llist of BIS value over time.
-    Ts : float, optional
+    time : list
+        List of time value.
+    bis : list
+        List of BIS value over time.
+    ts : float, optional
         Sampling time in second. The default is 1.
     phase : str, optional
         Control phase, can be "maintenance", 'induction" or "total". The default is 'maintenance'.
@@ -33,14 +35,14 @@ def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance'
     -------
     for "induction" phase:
     TT : float
-        Observed time-to-target (in seconds) required for reaching first time the target interval of [55,45] BIS values
+        Observed time-to-target (in minute) required for reaching first time the target interval of [55,45] BIS values
     BIS_NADIR: float
         The lowest observed BIS value during induction phase
     ST10: float
-        Settling time on the reference BIS value, defined within ± 5BIS(i.e., between 45 and 55 BIS)
+        Settling time (in minute) on the reference BIS value, defined within ± 5BIS(i.e., between 45 and 55 BIS)
         and stay within this BIS range
     ST20: float
-        Settling time on the reference BIS value, defined within ± 10BIS(i.e., between 40 and 60 BIS)
+        Settling time (in minute) on the reference BIS value, defined within ± 10BIS(i.e., between 40 and 60 BIS)
         and stay within this BIS range
     US: float
         Undershoot, defined as the BIS value that exceeds the limit of the defined BIS interval,
@@ -48,84 +50,94 @@ def compute_control_metrics(Bis: list, Ts: float = 1, phase: str = 'maintenance'
 
     For "maintenance" phase:
     TTp : float
-        Time to target after the positive step disturbance.
+        Time to target (in minute) after the positive step disturbance.
     BIS_NADIRp: float
         Minimum BIS vamue after the positive step disturbance.
     TTpn: float
-         Time to target after the negative step disturbance.
+         Time to target (in minute) after the negative step disturbance.
      BIS_NADIRn: float
          Maximum BIS vamue after the negative step disturbance.
 
     For total phase: both induction and maintenance phase.
     """
     if phase == 'induction':
-        BIS_NADIR = min(Bis)
+        BIS_NADIR = min(bis)
         US = max(0, 45 - BIS_NADIR)
         TT, ST10, ST20 = np.nan, np.nan, np.nan
-        for j in range(len(Bis)):
-            if Bis[j] < 55:
+        for j in range(len(bis)):
+            if bis[j] < 55:
                 if np.isnan(TT):
-                    TT = j*Ts/60
-            if Bis[j] < 55 and Bis[j] > 45:
+                    TT = time[j]/60
+            if bis[j] < 55 and bis[j] > 45:
                 if np.isnan(ST10):
-                    ST10 = j*Ts/60
+                    ST10 = time[j]/60
             else:
                 ST10 = np.nan
 
-            if Bis[j] < 60 and Bis[j] > 40:
+            if bis[j] < 60 and bis[j] > 40:
                 if np.isnan(ST20):
-                    ST20 = j*Ts/60
+                    ST20 = time[j]/60
             else:
                 ST20 = np.nan
         return TT, BIS_NADIR, ST10, ST20, US
 
     elif phase == 'maintenance':
-        BIS_NADIRp = min(Bis[int(start_step/Ts):int(end_step/Ts)])
-        BIS_NADIRn = max(Bis[int(end_step/Ts):])
+        # find start step index
+        index_start = np.where(np.array(time) == start_step)[0][0]
+        index_end = np.where(np.array(time) == end_step)[0][0]
+
+        BIS_NADIRp = min(bis[index_start:index_end])
+        BIS_NADIRn = max(bis[index_end:])
         TTp, TTn = np.nan, np.nan
-        for j in range(int(start_step/Ts), int(end_step/Ts)):
-            if Bis[j] < 55:
-                TTp = (j*Ts-60)/60
+        for j in range(index_start, index_end):
+            if bis[j] < 55:
+                TTp = (time[j]-start_step)/60
                 break
 
-        for j in range(int(end_step/Ts), len(Bis)):
-            if Bis[j] > 45:
-                TTn = (j*Ts-5*60)/60
+        for j in range(index_end, len(bis)):
+            if bis[j] > 45:
+                TTn = (time[j]-end_step)/60
                 break
 
         return TTp, BIS_NADIRp, TTn, BIS_NADIRn
 
     elif phase == 'total':
-        BIS_NADIR = min(Bis)
+        # consider induction as the first 10 minutes
+        index_10 = np.where(np.array(time) == 10*60)[0][0]
+        bis_induction = bis[:index_10]
+        BIS_NADIR = min(bis_induction)
         US = max(0, 45 - BIS_NADIR)
         TT, ST10, ST20 = np.nan, np.nan, np.nan
-        for j in range(int(10*60/Ts)):
-            if Bis[j] < 55:
+        for j in range(index_10):
+            if bis_induction[j] < 55:
                 if np.isnan(TT):
-                    TT = j*Ts/60
-            if Bis[j] < 55 and Bis[j] > 45:
+                    TT = time[j]/60
+            if bis_induction[j] < 55 and bis_induction[j] > 45:
                 if np.isnan(ST10):
-                    ST10 = j*Ts/60
+                    ST10 = time[j]/60
             else:
                 ST10 = np.nan
 
-            if Bis[j] < 60 and Bis[j] > 40:
+            if bis_induction[j] < 60 and bis_induction[j] > 40:
                 if np.isnan(ST20):
-                    ST20 = j*Ts/60
+                    ST20 = time[j]/60
             else:
                 ST20 = np.nan
-
-        BIS_NADIRp = min(Bis[int(start_step/Ts):int(end_step/Ts)])
-        BIS_NADIRn = max(Bis[int(end_step/Ts):])
+        # Maintenance phase
+        # find start step index
+        index_start = np.where(np.array(time) == start_step)[0][0] + 1
+        index_end = np.where(np.array(time) == end_step)[0][0] + 1
+        BIS_NADIRp = min(bis[index_start:index_end])
+        BIS_NADIRn = max(bis[index_end:])
         TTp, TTn = np.nan, np.nan
-        for j in range(int(start_step/Ts), int(end_step/Ts)):
-            if Bis[j] < 55:
-                TTp = (j*Ts-60)/60
+        for j in range(index_start, index_end):
+            if bis[j] < 55:
+                TTp = (time[j]-start_step)/60
                 break
 
-        for j in range(int(end_step/Ts), len(Bis)):
-            if Bis[j] > 45:
-                TTn = (j*Ts-5*60)/60
+        for j in range(index_end, len(bis)):
+            if bis[j] > 45:
+                TTn = (time[j]-time[index_end])/60
                 break
 
         return TT, BIS_NADIR, ST10, ST20, US, TTp, BIS_NADIRp, TTn, BIS_NADIRn

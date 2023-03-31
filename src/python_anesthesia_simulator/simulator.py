@@ -118,6 +118,7 @@ class Patient:
         # Save data
         if self.save_data_bool:
             # Time variable which will be stored
+            self.c_blood_nore = [0]
             self.Time = 0
             column_names = ['Time',  # time
                             'BIS', 'TOL', 'MAP', 'CO',  # outputs
@@ -188,6 +189,8 @@ class Patient:
             self.map += np.random.normal(scale=0.5)
             self.co += np.random.normal(scale=0.1)
 
+        # compute time
+        self.Time += self.ts
         # Save data
         if self.save_data_bool:
             self.save_data([u_propo, u_remi, u_nore])
@@ -346,8 +349,6 @@ class Patient:
 
     def save_data(self, inputs: list = [0, 0, 0]):
         """Save all current intern variable as a new line in self.dataframe."""
-        # compute time
-        self.Time += self.ts
         # store data
 
         new_line = {'Time': self.Time,
