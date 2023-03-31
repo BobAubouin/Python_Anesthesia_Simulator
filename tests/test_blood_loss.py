@@ -66,7 +66,7 @@ if __name__ == '__main__':
     ax[1].plot(Time, George.dataframe['MAP'])
     ax[2].plot(Time, George.dataframe['CO'])
     ax[3].plot(Time, George.dataframe['TOL'])
-    ax[4].plot(Time, George.dataframe['v_blood'])
+    ax[4].plot(Time, George.dataframe['blood_volume'])
 
     ax[0].set_ylabel("BIS")
     ax[1].set_ylabel("MAP")
