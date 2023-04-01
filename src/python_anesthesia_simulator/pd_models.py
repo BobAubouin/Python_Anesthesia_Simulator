@@ -13,7 +13,47 @@ def fsig(x, C50, gam): return x**gam/(C50**gam + x**gam)  # quick definition of 
 
 
 class BIS_model:
-    """efect site +Hill curv model to link Propofol and Remifentanil blood concentration to BIS."""
+    """Surface Response model to link Propofol and Remifentanil blood concentration to BIS.
+    equation:
+    $$
+    BIS = E0 + Emax * \frac{U^\gamma}{1+U^\gamma}
+    $$
+    where $U = \frac{U_p + U_r}{1 - \beta \theta + \beta \theta^2}$
+    and $U_p = \frac{C_{es}^{propo}}{C_{50}^{propo}}$, $U_r = \frac{C_{es}^{remi}}{C_{50}^{remi}}$, $\theta = \frac{U_p}{U_r+U_p}$.
+    
+    Attributes
+    ----------
+    c50p : float
+        Concentration at half effect for propofol effect on BIS (µg/mL).
+    c50r : float
+        Concentration at half effect for remifentanil effect on BIS (ng/mL).
+    gamma : float
+        slope coefficient for the BIS  model.
+    beta : float
+        interaction coefficient for the BIS model.
+    E0 : float
+        initial BIS.
+    Emax : float
+        max effect of the drugs on BIS.
+    hill_param : list
+        Parameter of the Hill model (Propo Remi interaction)
+        list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]
+    c50p_init : float
+        Initial value of c50p, used for blood loss modelling.
+        
+    Methods
+    -------
+    __init__(hill_model: str = 'Bouillon', hill_param: list = None, random: bool = False)
+        Init the class.
+    compute_bis(c_es_propo: float, c_es_remi: float) -> bis
+        Compute BIS function from Propofol and Remifentanil effect site concentration.
+    update_param_blood_loss(v_ratio)
+        Update c50p according to blood loss.
+    inverse_hill(bis, c_es_remi) -> c_es_propo
+        Compute Propofol effect site concentration from BIS and Remifentanil effect site concentration.
+    plot_surfaces()
+        Plot the response surface of the model.
+    """
 
     def __init__(self, hill_model: str = 'Bouillon', hill_param: list = None,
                  random: bool = False):
@@ -136,7 +176,7 @@ class BIS_model:
 
         self.c50p = self.c50p_init - 3/0.5*(1-v_ratio)
 
-    def inverse_hill(self, BIS: float, cer: float = 0) -> float:
+    def inverse_hill(self, BIS: float, c_es_remi: float = 0) -> float:
         """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration.
 
         Parameters
@@ -153,7 +193,7 @@ class BIS_model:
 
         """
         temp = (max(0, self.E0-BIS)/(self.Emax-self.E0+BIS))**(1/self.gamma)
-        Yr = cer / self.c50r
+        Yr = c_es_remi / self.c50r
         b = 3*Yr - temp
         c = 3*Yr**2 - (2 - self.beta) * Yr * temp
         d = Yr**3 - Yr**2*temp
@@ -189,7 +229,33 @@ class BIS_model:
 
 
 class TOL_model():
-    """Hierarchical model to link druf effect site concentration to Tolerance of Laringoscopy."""
+    """Hierarchical model to link druf effect site concentration to Tolerance of Laringoscopy.
+    The equation are:
+        $$ postopioid = preopioid * (1 - \frac{C_{es}^{remi}^\gamma_r}{C_{es}^{remi}^\gamma_r + (C_{50}^{remi}preopioid)^\gamma_r}) $$
+        $$ TOL = \frac{C_{es}^{propo}^\gamma_p}{C_{es}^{propo}^\gamma_p + (C_{50}^{propo}postopioid)^\gamma_p} $$
+
+    Attributes
+    ----------
+    c50p : float
+        Concentration at half effect for propofol effect on BIS (µg/mL).
+    c50r : float
+        Concentration at half effect for remifentanil effect on BIS (ng/mL).
+    gamma_p : float
+        Slope of the Hill function for propofol effect on TOL.
+    gamma_r : float
+        Slope of the Hill function for remifentanil effect on TOL.
+    pre_intensity : float
+        Preopioid intensity.
+    
+    Methods
+    -------
+    __init__(model='Bouillon', model_param=None, random=False)
+        Init the class.
+    compute_tol(c_es_propo, c_es_remi)
+        Compute TOL from Propofol and Remifentanil effect site concentration.
+    plot_surface()
+        Plot the surface of the TOL related to Propofol and Remifentanil effect site concentration.
+    """
 
     def __init__(self, model: str = 'Bouillon', model_param: list = None, random: bool = False):
         """
@@ -280,7 +346,70 @@ class TOL_model():
 
 
 class Hemo_PD_model():
-    """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Mean Arterial Pressure and Cardiac Output."""
+    """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Mean Arterial Pressure and Cardiac Output.
+    Use the addition of sigmoid curv to model the ffect of each drugs on MAP and CO.
+    
+    Attributes
+    ----------
+    co_base : float
+        Baseline cardiac output.
+    map_base : float
+        Baseline mean arterial pressure.
+    emax_nore_map : float
+        Maximal effect of Norepinephrine on MAP.
+    c50_nore_map : float
+        Concentration of Norepinephrine that produce half of the maximal effect on MAP.
+    gamma_nore_map : float
+        Slope of the sigmoid curve for Norepinephrine effect on MAP.
+    emax_nore_co : float
+        Maximal effect of Norepinephrine on CO.
+    c50_nore_co : float
+        Concentration of Norepinephrine that produce half of the maximal effect on CO.
+    gamma_nore_co : float
+        Slope of the sigmoid curve for Norepinephrine effect on CO.
+    emax_propo_SAP : float
+        Maximal effect of Propofol on SAP.
+    emax_propo_DAP : float
+        Maximal effect of Propofol on DAP.
+    emax_propo_co : float
+        Maximal effect of Propofol on CO.
+    c50_propo_map_1 : float
+        Concentration of Propofol that produce half of the maximal effect on MAP.
+    c50_propo_map_2 : float
+        Concentration of Propofol that produce half of the maximal effect on MAP.
+    gamma_propo_map_1 : float
+        Slope of the sigmoid curve for Propofol effect on MAP.
+    gamma_propo_map_2 : float
+        Slope of the sigmoid curve for Propofol effect on MAP.
+    c50_propo_co : float
+        Concentration of Propofol that produce half of the maximal effect on CO.
+    gamma_propo_co : float
+        Slope of the sigmoid curve for Propofol effect on CO.
+    emax_remi_map : float
+        Maximal effect of Remifentanil on MAP.
+    emax_remi_co : float    
+        Maximal effect of Remifentanil on CO.
+    c50_remi_map : float
+        Concentration of Remifentanil that produce half of the maximal effect on MAP.
+    gamma_remi_map : float
+        Slope of the sigmoid curve for Remifentanil effect on MAP.
+    c50_remi_co : float
+        Concentration of Remifentanil that produce half of the maximal effect on CO.
+    gamma_remi_co : float
+        Slope of the sigmoid curve for Remifentanil effect on CO.
+    map : float 
+        Mean arterial pressure.
+    co : float
+        Cardiac output.
+
+    Methods
+    -------
+    __init__(nore_param: list = None, propo_param: list = None, remi_param: list = None, random: bool = False,
+                co_base: float = 6.5, map_base: float = 90)
+        Initialize the class.
+    compute_hemo(c_es_propo: list, c_es_remi: float, c_es_nore: float)
+        Compute the effect of Propofol, Remifentanil and Norepinephrine on MAP and CO.
+    """
 
     def __init__(self, nore_param: list = None, propo_param: list = None,
                  remi_param: list = None, random: bool = False,

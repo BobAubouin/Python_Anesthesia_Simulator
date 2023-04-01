@@ -12,7 +12,42 @@ import control
 
 
 class CompartmentModel:
-    """PKmodel class modelize the PK model of propofol or remifentanil drug."""
+    """PKmodel class modelize the PK model of propofol or remifentanil drug. Simulate the drug distribution in the body.
+    Use a 6 compartement model for propofol, a 5 compartement model for remifentanil and a 1 compartement model for norepinephrine.
+    The model is a LTI model. The state vector is the concentration of the drug in each compartement.
+    
+    Attributes
+    ----------
+    ts : float
+        Sampling time, in s.
+    drug : str
+        can be "Propofol", "Remifentanil" or "Norepinephrine".
+    A_init : list
+        Initial value of the matrix A.
+    B_init : list
+        Initial value of the matrix B.
+    v1 : float
+        Volume of the first compartement.
+    continuous_sys : control.StateSpace
+        Continuous state space model.
+    discrete_sys : control.StateSpace
+        Discrete state space model.
+    x : list
+        State vector.
+    y : list
+        Output vector (hypnotic effect site concentration).
+        
+    Methods
+    -------
+    __init__(Patient_characteristic, lbm, drug, model=None, ts=1, random=False, x0=None, opiate=True, measurement="arterial")
+        Init the class.
+    one_step(u)
+        Simulate one step of the model.
+    update_param_CO(C0_ratio)
+        Update the clearance rate proportionnaly to the CO.
+    update_param_blood_loss(v_ratio)
+        Update the volume of the first compartment proportionnaly to the blood loss.
+    """
 
     def __init__(self, Patient_characteristic: list, lbm: float,
                  drug: str, model: str = None, ts: float = 1,
@@ -525,6 +560,7 @@ class CompartmentModel:
 
     def one_step(self, u: float) -> list:
         """Simulate one step of PK model.
+        x+ = Ax + Bu
 
         Parameters
         ----------

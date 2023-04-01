@@ -15,7 +15,92 @@ from .pd_models import BIS_model, TOL_model, Hemo_PD_model
 
 
 class Patient:
-    """Define a Patient class able to simulate Anesthesia process."""
+    """Define a Patient class able to simulate Anesthesia process.
+    
+    
+    Attributes
+    ----------
+    age : float
+        Age of the patient (yr).
+    height : float
+        Height of the patient (cm).
+    weight : float
+        Weight of the patient (kg).
+    gender : bool
+        0 for female, 1 for male.
+    co_base : float
+        Initial cardiac output (L/min).
+    map_base : float
+        Initial mean arterial pressure (mmHg).
+    ts : float
+        Sampling time (s).
+    model_propo : str
+        Name of the propofol PK model.
+    model_remi : str
+        Name of the remifentanil PK model.
+    hill_param : list
+        Parameter of the BIS model (Propo Remi interaction)
+        list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS].
+    random_PK : bool
+        Add uncertainties in the Propodfol and Remifentanil PK models.
+    random_PD : bool
+        Add uncertainties in the BIS PD model.
+    co_update : bool
+        Turn on the option to update PK parameters thanks to the CO value.
+    save_data_bool : bool
+        Save all interns variable at each sampling time in a data frame.
+    lbm : float
+        Lean body mass (kg).
+    propo_pk : CompartmentModel
+        6-comparments model for Propofol.
+    remi_pk : CompartmentModel
+        5-comparments model for Remifentanil.
+    nore_pk : CompartmentModel
+        1-comparments model for Norepinephrine.
+    bis_pd : BIS_model
+        Surface-response model for bis computation.
+    tol_pd : TOL_model
+        Hierarchical model for TOL computation.
+    hemo_pd : Hemo_PD_model
+        Hemodynamic model for CO and MAP computation.
+    data : pd.DataFrame
+        Dataframe containing all the intern variables at each sampling time.
+    bis : float
+        Bispectral index (%).
+    tol : float
+        Tolerance of laryngospie probability (0-1).
+    co : float
+        Cardiac output (L/min).
+    map : float
+        Mean arterial pressure (mmHg).
+    blood_volume : float
+        Blood volume (L).
+
+    Methods
+    -------
+    __init__(patient_characteristic, co_base=6.5, map_base=90, model_propo='Schnider',
+                model_remi='Minto', ts=1, hill_param=None, random_PK=False, random_PD=False,
+                co_update=False, save_data_bool=True)
+        Initialize the patient class.
+    one_step(u_propo=0, u_remi=0, u_nore=0, blood_rate=0, dist=[0,0,0], noise=True)
+        -> bis, co, map, tol
+        Simulate one step of the anesthesia process.
+    find_equilibrium(bis_target, tol_target, map_target) -> u_propo, u_remi, u_nore
+        Find the input to meet the targeted outputs at the equilibrium.
+    find_bis_equilibrium_with_ratio(bis_target, rp_ratio) -> u_propo, u_remi
+        Find the input of Propofol and Remifentanil to meet the BIS target at the
+        equilibrium with a fixed ratio between drugs rates.
+    initialized_at_given_input(u_propo=0, u_remi=0, u_nore=0) -> None
+        Initialize the patient Simulator at the given input as an equilibrium point.
+    initialized_at_maintenance(bis_target, tol_target, map_target) -> u_propo, u_remi, u_nore
+        Initialize the patient model at the equilibrium point for the given output value.
+    blood_loss(fluid_rate=0) -> None
+        Actualize the model parameters to mimic blood loss.
+    init_dataframe() -> None
+        Initialize the dataframe to save the intern variables.
+    save_data() -> None
+        Save the current intern variables in the dataframe.
+    """
 
     def __init__(self,
                  patient_characteristic: list,
@@ -120,7 +205,7 @@ class Patient:
             self.init_dataframe()
 
     def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
-                 blood_rate: float = 0, Dist: list = [0]*3, noise: bool = True) -> list:
+                 blood_rate: float = 0, dist: list = [0]*3, noise: bool = True) -> tuple[float, float, float, float]:
         """
         Simulate one step time of the patient.
 
@@ -142,9 +227,15 @@ class Patient:
 
         Returns
         -------
-        output : list
-            [BIS, MAP, CO, TOL] : current BIS (%), MAP (mmHg) ,and CO (L/min), TOL (%)
-
+        bis : float
+            Bispectral index(%).
+        co : float
+            Cardiac output (L/min).
+        map : float
+            Mean arterial pressure (mmHg).
+        tol : float
+            Tolerance of Laringoscopy index (0-1).
+        
         """
         # compute PK model
         self.c_es_propo = self.propo_pk.one_step(u_propo)
@@ -157,9 +248,9 @@ class Patient:
         # Hemodynamic
         self.map, self.co = self.hemo_pd.compute_hemo(self.propo_pk.x[4:], self.remi_pk.x[4], self.c_blood_nore)
         # disturbances
-        self.bis += Dist[0]
-        self.map += Dist[1]
-        self.co += Dist[2]
+        self.bis += dist[0]
+        self.map += dist[1]
+        self.co += dist[2]
 
         # blood loss effect
         if blood_rate != 0 or self.blood_volume != self.blood_volume_init:
@@ -185,7 +276,7 @@ class Patient:
         if self.save_data_bool:
             self.save_data([u_propo, u_remi, u_nore])
 
-        return([self.bis, self.co, self.map, self.tol])
+        return(self.bis, self.co, self.map, self.tol)
 
     def find_equilibrium(self, bis_target: float, tol_target: float,
                          map_target: float) -> tuple[float, float, float]:
@@ -257,7 +348,8 @@ class Patient:
     def find_bis_equilibrium_with_ratio(self, bis_target: float,
                                         rp_ratio: float = 2) -> tuple[float, float]:
         """
-        Find the input to meet the targeted outputs at the equilibrium.
+        Find the input of Propofol and Remifentanil to meet the BIS target at the
+        equilibrium with a fixed ratio between drugs rates.
 
         Parameters
         ----------
