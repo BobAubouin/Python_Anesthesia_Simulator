@@ -13,7 +13,8 @@ from python_anesthesia_simulator import simulator
 
 Ts = 120
 George_1 = simulator.Patient([18, 170, 60, 0], ts=Ts, model_propo="Eleveld", model_remi="Eleveld", co_update=True)
-George_1.tol_pd.plot_surface()
+George_2 = simulator.Patient([18, 170, 60, 0], ts=Ts, model_propo="Eleveld", model_remi="Eleveld", co_update=False)
+
 
 # %% Simulation
 
@@ -22,17 +23,23 @@ N_simu = int(720 * 60/Ts)
 bis_target_1 = 50
 tol_target_1 = 0.9
 map_target_1 = 80
+
 George_1.initialized_at_maintenance(bis_target=50, tol_target=0.9, map_target=80)
 uP, uR, uN = George_1.u_propo_eq, George_1.u_remi_eq, George_1.u_nore_eq
-Bis, Co, Map, Tol = George_1.one_step(u_propo=uP, u_remi=uR, u_nore=uN, noise=False)
+George_1.one_step(u_propo=uP, u_remi=uR, u_nore=uN, noise=False)
 
 bis_target_2 = 40
 tol_target_2 = 0.95
 map_target_2 = 85
+
+up_2, ur_2 = George_2.find_bis_equilibrium_with_ratio(bis_target=bis_target_1, rp_ratio=2)
+
+George_2.one_step(u_propo=up_2, u_remi=ur_2, u_nore=0, noise=False)
+
 uP, uR, uN = George_1.find_equilibrium(bis_target=40, tol_target=0.95, map_target=85)
 for index in range(N_simu):
-    Bis, Co, Map, Tol = George_1.one_step(u_propo=uP, u_remi=uR, u_nore=uN, noise=False)
-
+    George_1.one_step(u_propo=uP, u_remi=uR, u_nore=uN, noise=False)
+    George_2.one_step(u_propo=up_2, u_remi=ur_2, u_nore=0, noise=False)
 # %% plot
 if __name__ == '__main__':
     fig, ax = plt.subplots(3)
@@ -77,6 +84,21 @@ if __name__ == '__main__':
     plt.ticklabel_format(style='plain')
     plt.show()
 
+    # plot input and bis for patient 2
+    Time=George_2.dataframe['Time']/60
+    fig, ax = plt.subplots(2)
+    ax[0].plot(Time, George_2.dataframe['u_propo'], label="Propofol")
+    ax[0].plot(Time, George_2.dataframe['u_remi'], label="Remifentanil")
+    ax[0].plot(Time, George_2.dataframe['u_nore'], label="Norepinephrine")
+    ax[0].set_ylabel("Input")
+    ax[0].legend()
+    ax[0].grid()
+    ax[1].plot(Time, George_2.dataframe['BIS'])
+    ax[1].set_ylabel("BIS")
+    ax[1].set_xlabel("Time (min)")
+    ax[1].grid()
+    plt.show()
+
 # %% test
 # Verify that the equilibrium is reached at the beginning and at the end of the simulation
 assert abs(George_1.dataframe['BIS'].iloc[0]-bis_target_1) < 5e-1
@@ -85,5 +107,6 @@ assert abs(George_1.dataframe['TOL'].iloc[0]-tol_target_1) < 1e-2
 assert abs(George_1.dataframe['TOL'].iloc[-1]-tol_target_2) < 1e-2
 assert abs(George_1.dataframe['MAP'].iloc[0]-map_target_1) < 1e-2
 assert abs(George_1.dataframe['MAP'].iloc[-1]-map_target_2) < 1e-1
+assert abs(George_2.dataframe['BIS'].iloc[-1]-bis_target_1) < 1
 
 print('test ok')

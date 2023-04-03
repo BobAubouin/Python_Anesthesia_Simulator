@@ -256,7 +256,7 @@ class Patient:
         Find the input to meet the targeted outputs at the equilibrium.
 
         Solve the optimization problem to find the equilibrium input for BIS - TOL:
-        
+
         .. math::  min_{C_{p,es}, C_{r,es}} \frac{||BIS_{target} - BIS||^2}{100^2} + ||TOL_{target} - TOL||^2
 
         Then compute the concentration of Noradrenaline to meet the MAP target.
@@ -366,27 +366,28 @@ class Patient:
         lbg = []
         ubg = []
 
-        Ap = self.propo_pk.continuous_sys.A
-        Bp = self.propo_pk.continuous_sys.B
-        Ar = self.remi_pk.continuous_sys.A
-        Br = self.remi_pk.continuous_sys.B
+        Ap = self.propo_pk.discretize_sys.A
+        Bp = self.propo_pk.discretize_sys.B
+        Ar = self.remi_pk.discretize_sys.A
+        Br = self.remi_pk.discretize_sys.B
 
-        x0p = np.linalg.solve(Ap, Bp * 7 / 20)
-        x0r = np.linalg.solve(Ar, Br * 7 / 10)
-        xp = cas.MX.sym('xp', 6)
+        x0p = np.linalg.solve(Ap-np.eye(6), - Bp * 7 / 20)
+        x0r = np.linalg.solve(Ar-np.eye(5), - Br * 7 / 10)
         w0 += x0p[:, 0].tolist()
-        xr = cas.MX.sym('xr', 5)
         w0 += x0r[:, 0].tolist()
+
+        xp = cas.MX.sym('xp', 6, 1)
+        xr = cas.MX.sym('xr', 5, 1)
         UP = cas.MX.sym('up', 1)
         w = [xp, xr, UP]
         w0 += [7 / 2]
-        lbw = [1e-6] * 12
+        lbw = [1e-3] * 12
         ubw = [1e4] * 12
 
         bis = self.bis_pd.compute_bis(xp[3], xr[3])
         J = (bis_target - bis)**2
 
-        g = [Ap @ xp + Bp * UP, Ar @ xr + Br * (rp_ratio * UP)]
+        g = [(Ap-np.eye(6)) @ xp + Bp * UP, (Ar-np.eye(5)) @ xr + Br * (rp_ratio * UP)]
         lbg = [-1e-8] * 11
         ubg = [1e-8] * 11
         opts = {'ipopt.print_level': 0, 'print_time': 0}
@@ -394,6 +395,7 @@ class Patient:
         solver = cas.nlpsol('solver', 'ipopt', prob, opts)
         sol = solver(x0=w0, lbx=lbw, ubx=ubw, lbg=lbg, ubg=ubg)
         w_opt = sol['x'].full().flatten()
+
         self.u_propo_eq = w_opt[-1]
         self.u_remi_eq = rp_ratio * self.u_propo_eq
         return self.u_propo_eq, self.u_remi_eq
