@@ -6,3 +6,5 @@ paper/.obsidian/
 example/.ipynb_checkpoints/
 # backup files
 *.back
+# docs folder
+docs/
