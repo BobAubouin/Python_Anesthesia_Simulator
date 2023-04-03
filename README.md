@@ -21,7 +21,7 @@ The Python Anesthesia Simulator (PAS) models the effect of drugs on physiologica
 
 
 ## Documentation
-Available soon in the _Documentation.pdf_ file.
+Available in the _Documentation.pdf_ file.
 
 ## License
 
