@@ -17,7 +17,7 @@ import casadi as cas
 from pyswarm import pso
 
 # Local imports
-from python_anesthesia_simulator import simulator, disturbances
+import python_anesthesia_simulator as pas
 
 #Patient table:
 #index, Age, H[cm], W[kg], Gender, Ce50p, Ce50r, γ, β, E0, Emax
@@ -65,7 +65,7 @@ def simu(Patient_info: list, style: str, PID_param: list,
     """
 
     hill_param = Patient_info[4:]
-    George = simulator.Patient(Patient_info[:4], hill_param=hill_param,
+    George = pas.Patient(Patient_info[:4], hill_param=hill_param,
                                random_PK=random_PK, random_PD=random_PD)
     hill_param = George.bis_pd.hill_param
     Ce50p = hill_param[0]
@@ -100,7 +100,7 @@ def simu(Patient_info: list, style: str, PID_param: list,
             uP = PID_controller.one_step(Bis, BIS_cible)
             uR = min(ur_max, max(0, uP * ratio))
             uP = min(up_max, max(0, uP))
-            Dist = disturbances.compute_disturbances(i * ts, 'realistic')
+            Dist = pas.compute_disturbances(i * ts, 'realistic')
             Bis,_,_,_ = George.one_step(uP, uR, Dist=Dist, noise=False)
             
 
@@ -119,7 +119,7 @@ def simu(Patient_info: list, style: str, PID_param: list,
             uP = PID_controller.one_step(Bis, BIS_cible)
             uR = min(ur_max, max(0, uP * ratio))
             uP = min(up_max, max(0, uP))
-            Dist = disturbances.compute_disturbances(i * ts, 'step')
+            Dist = pas.compute_disturbances(i * ts, 'step')
             Bis,_,_,_ = George.one_step(uP, uR, Dist=Dist, noise=False)
 
     IAE = np.sum(np.abs(George.dataframe['BIS'] - BIS_cible))

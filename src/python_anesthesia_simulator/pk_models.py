@@ -1,8 +1,3 @@
-"""Includes class for different PK models.
-
-@author: Aubouin--Pairault Bob 2023, bob.aubouin@tutanota.com
-"""
-
 # Standard import
 import copy
 
@@ -13,9 +8,38 @@ import control
 
 class CompartmentModel:
     """PKmodel class modelize the PK model of propofol or remifentanil drug. Simulate the drug distribution in the body.
-    Use a 6 compartement model for propofol, a 5 compartement model for remifentanil and a 1 compartement model for norepinephrine.
+
+    Use a 6 compartement model for propofol, a 5 compartement model for remifentanil,
+    and a 1 compartement model for norepinephrine.
     The model is a LTI model. The state vector is the concentration of the drug in each compartement.
-    
+
+    Parameters
+    ----------
+    Patient_characteristic: list
+        Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
+    lbm : float
+        lean body mass index.
+    drug : str
+        can be "Propofol", "Remifentanil" or "Norepinephrine".
+    model : str, optional
+        Could be "Schnider" [1]_, "Marsh_initial"[2]_, "Marsh_modified"[3]_,
+        "Shuttler"[4]_ or "Eleveld"[5_] for Propofol.
+        "Minto"[6]_, "Eleveld"[7]_ for Remifentanil.
+        only "Beloeil"[8]_ for Norepinephrine.
+        The default is "Minto" for Remifentanil and "Schnider" for Propofol.
+    ts : float, optional
+        Sampling time, in s. The default is 1.
+    random : bool, optional
+        bool to introduce uncertainties in the model. The default is False.
+    x0 : list, optional
+        Initial concentration of the compartement model. The default is np.ones([4, 1])*1e-4.
+    opiate : bool, optional
+        For Elelevd model for propofol, specify if their is a co-administration of opiate (Remifentantil)
+        in the same time. The default is False.
+    measurement : str, optional
+        For Elelevd model for propofol, specify the measuremnt place for blood concentration.
+        Can be either 'arterial' or 'venous'. The default is 'aretrial'.
+
     Attributes
     ----------
     ts : float
@@ -36,17 +60,32 @@ class CompartmentModel:
         State vector.
     y : list
         Output vector (hypnotic effect site concentration).
+    
         
-    Methods
-    -------
-    __init__(Patient_characteristic, lbm, drug, model=None, ts=1, random=False, x0=None, opiate=True, measurement="arterial")
-        Init the class.
-    one_step(u)
-        Simulate one step of the model.
-    update_param_CO(C0_ratio)
-        Update the clearance rate proportionnaly to the CO.
-    update_param_blood_loss(v_ratio)
-        Update the volume of the first compartment proportionnaly to the blood loss.
+    References
+    ----------
+    .. [1] T. W. Schnider et al., “The Influence of Age on Propofol Pharmacodynamics,”
+            Anesthesiology, vol. 90, no. 6, pp. 1502-1516., Jun. 1999, doi: 10.1097/00000542-199906000-00003.
+    .. [2] B. Marsh, M. White, N. morton, and G. N. C. Kenny,
+            “Pharmacokinetic model Driven Infusion of Propofol in Children,”
+            BJA: British Journal of Anaesthesia, vol. 67, no. 1, pp. 41–48, Jul. 1991, doi: 10.1093/bja/67.1.41.
+    .. [3] M. M. R. F. Struys et al., “Comparison of Plasma Compartment versus  Two Methods for Effect 
+            Compartment–controlled Target-controlled Infusion for Propofol,”
+            Anesthesiology, vol. 92, no. 2, p. 399, Feb. 2000, doi: 10.1097/00000542-200002000-00021.
+    .. [4] J. Schüttler and H. Ihmsen, “Population Pharmacokinetics of Propofol: A Multicenter Study,”
+            Anesthesiology, vol. 92, no. 3, pp. 727–738, Mar. 2000, doi: 10.1097/00000542-200003000-00017.
+    .. [5] D. J. Eleveld, P. Colin, A. R. Absalom, and M. M. R. F. Struys,
+            “Pharmacokinetic–pharmacodynamic model for propofol for broad application in anaesthesia and sedation”
+            British Journal of Anaesthesia, vol. 120, no. 5, pp. 942–959, mai 2018, doi:10.1016/j.bja.2018.01.018.
+    .. [6] C. F. Minto et al., “Influence of Age and Gender on the Pharmacokinetics
+            and Pharmacodynamics of Remifentanil: I. Model Development,”
+            Anesthesiology, vol. 86, no. 1, pp. 10–23, Jan. 1997, doi: 10.1097/00000542-199701000-00004.
+    .. [7] D. J. Eleveld et al., “An Allometric Model of Remifentanil Pharmacokinetics and Pharmacodynamics,”
+            Anesthesiology, vol. 126, no. 6, pp. 1005–1018, juin 2017, doi: 10.1097/ALN.0000000000001634.
+    .. [8] H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
+            in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
+            vol. 95, no. 6, pp. 782–788, Dec. 2005, doi: 10.1093/bja/aei259.
+
     """
 
     def __init__(self, Patient_characteristic: list, lbm: float,
@@ -55,36 +94,6 @@ class CompartmentModel:
                  opiate=True, measurement="arterial"):
         """
         Init the class.
-
-        Parameters
-        ----------
-        Patient_characteristic: list
-            Patient_characteristic = [age (yr), height(cm), weight(kg), gender(0: female, 1: male)]
-        lbm : float
-            lean body mass index.
-        drug : str
-            can be "Propofol", "Remifentanil" or "Norepinephrine".
-        model : str, optional
-            Could be "Minto", "Eleveld" for Remifentanil,
-            "Schnider", "Marsh_initial", "Marsh_modified", "Shuttler" or "Eleveld" for Propofol.
-            The default is "Minto" for Remifentanil and "Schnider" for Propofol.
-        ts : float, optional
-            Sampling time, in s. The default is 1.
-        random : bool, optional
-            bool to introduce uncertainties in the model. The default is False.
-        x0 : list, optional
-            Initial concentration of the compartement model. The default is np.ones([4, 1])*1e-4.
-        opiate : bool, optional
-            For Elelevd model for propofol, specify if their is a co-administration of opiate (Remifentantil)
-            in the same time. The default is False.
-        measurement : str, optional
-            For Elelevd model for propofol, specify the measuremnt place for blood concentration.
-            Can be either 'arterial' or 'venous'. The default is 'aretrial'.
-
-        Returns
-        -------
-        None.
-
         """
         self.ts = ts
         age = Patient_characteristic[0]
@@ -560,7 +569,8 @@ class CompartmentModel:
 
     def one_step(self, u: float) -> list:
         """Simulate one step of PK model.
-        x+ = Ax + Bu
+
+        .. math:: x^+ = Ax + Bu
 
         Parameters
         ----------
@@ -604,7 +614,8 @@ class CompartmentModel:
     def update_param_blood_loss(self, v_ratio: float):
         """Update PK coefficient to mimic a blood loss.
 
-        Updaate the blodd volume compartment
+            Update the blodd volume compartment
+
         Parameters
         ----------
         v_ratio : float
