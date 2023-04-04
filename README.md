@@ -28,7 +28,7 @@ Available in the _Documentation.pdf_ file.
 _GNU General Public License 3.0_
 
 ## Project status
-Preparing for JOSS submition
+Ready for JOSS submition
 
 ## Author
 Bob Aubouin--Paitault
