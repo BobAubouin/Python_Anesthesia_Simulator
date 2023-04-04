@@ -12,9 +12,9 @@ description = "Python version of an anesthesia simlator."
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies=[
-    "numpy==1.22.3",
+    "numpy",
     "control==0.9.3.post2",
-    "matplotlib==3.5.2"
+    "matplotlib"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
