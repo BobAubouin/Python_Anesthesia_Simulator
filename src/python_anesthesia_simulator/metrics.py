@@ -49,10 +49,10 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
 
     References
     ----------
-    .. [1]  C. M. Ionescu, R. D. Keyser, B. C. Torrico,
-            T. D. Smet, M. M. Struys, and J. E. Normey-Rico, “Robust Predictive Control Strategy Applied for Propofol Dosing
-            Using BIS as a Controlled Variable During Anesthesia,” IEEE Transactions on Biomedical Engineering, vol. 55, no.
-            9, pp. 2161–2170, Sep. 2008, doi: 10.1109/TBME.2008.923142. 
+    .. [1]  C. M. Ionescu, R. D. Keyser, B. C. Torrico, T. D. Smet, M. M. Struys, and J. E. Normey-Rico,
+            “Robust Predictive Control Strategy Applied for Propofol Dosing Using BIS as a Controlled
+            Variable During Anesthesia,” IEEE Transactions on Biomedical Engineering, vol. 55, no.
+            9, pp. 2161–2170, Sep. 2008, doi: 10.1109/TBME.2008.923142.
 
     """
     if phase == 'induction':

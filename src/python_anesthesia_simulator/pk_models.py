@@ -60,8 +60,7 @@ class CompartmentModel:
         State vector.
     y : list
         Output vector (hypnotic effect site concentration).
-    
-        
+
     References
     ----------
     .. [1] T. W. Schnider et al., “The Influence of Age on Propofol Pharmacodynamics,”
@@ -69,7 +68,7 @@ class CompartmentModel:
     .. [2] B. Marsh, M. White, N. morton, and G. N. C. Kenny,
             “Pharmacokinetic model Driven Infusion of Propofol in Children,”
             BJA: British Journal of Anaesthesia, vol. 67, no. 1, pp. 41–48, Jul. 1991, doi: 10.1093/bja/67.1.41.
-    .. [3] M. M. R. F. Struys et al., “Comparison of Plasma Compartment versus  Two Methods for Effect 
+    .. [3] M. M. R. F. Struys et al., “Comparison of Plasma Compartment versus  Two Methods for Effect
             Compartment–controlled Target-controlled Infusion for Propofol,”
             Anesthesiology, vol. 92, no. 2, p. 399, Feb. 2000, doi: 10.1097/00000542-200002000-00021.
     .. [4] J. Schüttler and H. Ihmsen, “Population Pharmacokinetics of Propofol: A Multicenter Study,”
@@ -92,9 +91,7 @@ class CompartmentModel:
                  drug: str, model: str = None, ts: float = 1,
                  random: bool = False, x0: list = None,
                  opiate=True, measurement="arterial"):
-        """
-        Init the class.
-        """
+        """Init the class."""
         self.ts = ts
         age = Patient_characteristic[0]
         height = Patient_characteristic[1]

@@ -9,7 +9,7 @@ Created on Thu Feb  2 16:32:20 2023
 import matplotlib.pyplot as plt
 from python_anesthesia_simulator import simulator
 
-# %% Initialization patient 
+# %% Initialization patient
 ts = 5
 age, height, weight, gender = 74, 164, 88, 1
 George = simulator.Patient([age, height, weight, gender], ts=ts,

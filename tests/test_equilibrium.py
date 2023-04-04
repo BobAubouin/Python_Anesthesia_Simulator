@@ -6,7 +6,6 @@ Created on Thu Feb  2 16:32:20 2023
 @author: aubouinb
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
 from python_anesthesia_simulator import simulator
 
@@ -85,7 +84,7 @@ if __name__ == '__main__':
     plt.show()
 
     # plot input and bis for patient 2
-    Time=George_2.dataframe['Time']/60
+    Time = George_2.dataframe['Time']/60
     fig, ax = plt.subplots(2)
     ax[0].plot(Time, George_2.dataframe['u_propo'], label="Propofol")
     ax[0].plot(Time, George_2.dataframe['u_remi'], label="Remifentanil")

@@ -262,7 +262,7 @@ class Patient:
         Then compute the concentration of Noradrenaline to meet the MAP target.
 
         Finally, compute the input of Propofol, Remifentanil and Noradrenaline to meet the targeted concentration.
-        
+
         Parameters
         ----------
         bis_target : float
@@ -340,8 +340,8 @@ class Patient:
         .. math:: u_{propo} = u_{remi} * rp_{ratio}
         .. math:: A_{propo} x_{propo} + B_{propo} u_{propo} = 0
         .. math:: A_{remi} x_{remi} + B_{remi} u_{remi} = 0
-    
-        
+
+
         Parameters
         ----------
         bis_target : float
