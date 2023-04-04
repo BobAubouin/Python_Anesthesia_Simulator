@@ -475,8 +475,8 @@ class Hemo_PD_model():
             w_emax_propo_DAP = 0.207
             w_c50_propo_map_1 = 0.165
             w_c50_propo_map_2 = 0.148
-            w_gamma_propo_map_1 = 4.15
-            w_gamma_propo_map_2 = 5.13
+            w_gamma_propo_map_1 = np.sqrt(np.log(1+5.59**2))
+            w_gamma_propo_map_2 = np.sqrt(np.log(1+6.33**2))
 
             # see J. E. Fairfield, A. Dritsas, and R. J. Beale,
             # “HAEMODYNAMIC EFFECTS OF PROPOFOL: INDUCTION WITH 2.5 MG KG−1,”
@@ -564,9 +564,9 @@ class Hemo_PD_model():
             self.emax_propo_SAP *= np.exp(np.random.normal(scale=w_emax_propo_SAP))
             self.emax_propo_DAP *= np.exp(np.random.normal(scale=w_emax_propo_DAP))
             self.c50_propo_map_1 *= np.exp(np.random.normal(scale=w_c50_propo_map_1))
-            self.gamma_propo_map_1 *= np.exp(np.random.normal(scale=w_gamma_propo_map_1))
+            self.gamma_propo_map_1 *= min(3, np.exp(np.random.normal(scale=w_gamma_propo_map_1)))
             self.c50_propo_map_2 *= np.exp(np.random.normal(scale=w_c50_propo_map_2))
-            self.gamma_propo_map_2 *= np.exp(np.random.normal(scale=w_gamma_propo_map_2))
+            self.gamma_propo_map_2 *= min(3, np.exp(np.random.normal(scale=w_gamma_propo_map_2)))
 
             self.emax_propo_co += np.random.normal(scale=std_emax_propo_co)
             self.c50_propo_co *= np.exp(np.random.normal(scale=w_c50_propo_co))

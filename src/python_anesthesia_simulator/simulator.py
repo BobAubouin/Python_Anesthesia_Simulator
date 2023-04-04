@@ -242,10 +242,11 @@ class Patient:
             self.map += np.random.normal(scale=0.5)
             self.co += np.random.normal(scale=0.1)
 
-        # compute time
-        self.Time += self.ts
+        
         # Save data
         if self.save_data_bool:
+            # compute time
+            self.Time += self.ts
             self.save_data([u_propo, u_remi, u_nore])
 
         return(self.bis, self.co, self.map, self.tol)
