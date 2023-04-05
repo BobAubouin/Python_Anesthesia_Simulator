@@ -35,10 +35,10 @@ class CompartmentModel:
         Initial concentration of the compartement model. The default is np.ones([4, 1])*1e-4.
     opiate : bool, optional
         For Elelevd model for propofol, specify if their is a co-administration of opiate (Remifentantil)
-        in the same time. The default is False.
+        in the same time. The default is True.
     measurement : str, optional
         For Elelevd model for propofol, specify the measuremnt place for blood concentration.
-        Can be either 'arterial' or 'venous'. The default is 'aretrial'.
+        Can be either 'arterial' or 'venous'. The default is 'arterial'.
 
     Attributes
     ----------

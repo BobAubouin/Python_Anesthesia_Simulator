@@ -18,6 +18,25 @@ class BIS_model:
     .. math:: U_r = \frac{C_{r,es}}{C_{r,50}}
     .. math:: \theta = \frac{U_p}{U_r+U_p}
 
+    Parameters
+    ----------
+    hill_model : str, optional
+        Only 'Bouillon' [9] is available. Ignored if  is specified.
+    hill_param : list, optional
+        Parameter of the Hill model (Propo Remi interaction)
+        list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
+            - C50p_BIS : Concentration at half effect for propofol effect on BIS (µg/mL)
+            - C50r_BIS : Concentration at half effect for remifentanil effect on BIS (ng/mL)
+            - gamma_BIS : slope coefficient for the BIS  model,
+            - beta_BIS : interaction coefficient for the BIS model,
+            - E0_BIS : initial BIS,
+            - Emax_BIS : max effect of the drugs on BIS.
+        The default is None.
+    random : bool, optional
+        Add uncertainties in the parameters. Ignored if Hill_cruv is specified. The default is False.
+    ts : float, optional
+        Sampling time, in s. The default is 1.
+
     Attributes
     ----------
     c50p : float
@@ -37,31 +56,19 @@ class BIS_model:
         list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]
     c50p_init : float
         Initial value of c50p, used for blood loss modelling.
+
+    References
+    ----------
+    .. [9]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
+            Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
+            Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
+            doi: 10.1097/00000542-200406000-00006.
     """
 
     def __init__(self, hill_model: str = 'Bouillon', hill_param: list = None,
                  random: bool = False):
         """
         Init the class.
-
-        Parameters
-        ----------
-        hill_model : str, optional
-            Only 'Bouillon' is available. Ignored if  is specified.
-        hill_param : list, optional
-            Parameter of the Hill model (Propo Remi interaction)
-            list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
-                - C50p_BIS : Concentration at half effect for propofol effect on BIS (µg/mL)
-                - C50r_BIS : Concentration at half effect for remifentanil effect on BIS (ng/mL)
-                - gamma_BIS : slope coefficient for the BIS  model,
-                - beta_BIS : interaction coefficient for the BIS model,
-                - E0_BIS : initial BIS,
-                - Emax_BIS : max effect of the drugs on BIS.
-            The default is None.
-        random : bool, optional
-            Add uncertainties in the parameters. Ignored if Hill_cruv is specified. The default is False.
-        ts : float, optional
-            Sampling time, in s. The default is 1.
 
         Returns
         -------
@@ -222,6 +229,16 @@ class TOL_model():
     .. math:: postopioid = preopioid * \left(1 - \frac{C_{r,es}^{\gamma_r}}{C_{r,es}^{\gamma_r} + (C_{r,50} preopioid)^{\gamma_r}}\right)
     .. math:: TOL = \frac{C_{p,es}^{\gamma_p}}{C_{p,es}^{\gamma_p} + (C_{p,50} postopioid)^{\gamma_p}}
 
+    Parameters
+    ----------
+    model : str, optional
+        Only 'Bouillon'[9] is available. Ignored if model_param is specified. The default is 'Bouillon'.
+    model_param : list, optional
+        Model parameters, model_param = [C50p, C50p, gammaP, gammaR, Preopioid intensity].
+        The default is None.
+    random : bool, optional
+        Add uncertainties in the parameters. Ignored if model_param is specified. The default is False.
+
     Attributes
     ----------
     c50p : float
@@ -235,21 +252,17 @@ class TOL_model():
     pre_intensity : float
         Preopioid intensity.
 
+    References
+    ----------
+    .. [9]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil Regarding Hypnosis,
+            Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic Approximate Entropy,” Anesthesiology,
+            vol. 100, no. 6, pp. 1353–1372, Jun. 2004, doi: 10.1097/00000542-200406000-00006.
+
     """
 
     def __init__(self, model: str = 'Bouillon', model_param: list = None, random: bool = False):
         """
         Init the class.
-
-        Parameters
-        ----------
-        model : str, optional
-            Only 'Bouillon' is available. Ignored if model_param is specified. The default is 'Bouillon'.
-        model_param : list, optional
-            Model parameters, model_param = [C50p, C50p, gammaP, gammaR, Preopioid intensity].
-            The default is None.
-        random : bool, optional
-            Add uncertainties in the parameters. Ignored if model_param is specified. The default is False.
 
         Returns
         -------
@@ -328,7 +341,36 @@ class TOL_model():
 class Hemo_PD_model():
     """Modelize the effect of Propofol, Remifentanil, Norepinephrine on Mean Arterial Pressure and Cardiac Output.
 
-    Use the addition of sigmoid curv to model the ffect of each drugs on MAP and CO.
+    Use the addition of sigmoid curve to model the effect of each drugs on MAP and CO.
+    The following articles are used to define the parameters of the model:
+
+    - Norepinephrine to MAP: [10]
+    - Noepinephrine to CO: [11]
+    - Propofol to MAP: [12]
+    - Propofol to CO: [13]
+    - Remifentanil to MAP: [14]
+    - Remifentanil to CO: [15]
+
+    Parameters
+    ----------
+    nore_param : list, optional
+        List of hill curve parameters for Norepinephrine action [Emax_map, c50_map, gamma_map,
+                                                                    Emax_co, c50_co, gamma_co].
+        The default is None.
+    propo_param : list, optional
+        List of hill curve parameters for Propofol action [emax_SAP, emax_DAP, c50_map_1, c50_map_2,
+                                                            gamma_map_1, gamma_map_2, Emax_co, c50_co, gamma_co].
+        The default is None.
+    remi_param : list, optional
+        List of hill curve parameters for Relifentanil action [Emax_map, c50_map, gamma_map,
+                                                                Emax_co, c50_co, gamma_co].
+        The default is None.
+    random : bool, optional
+        Add uncertainties in the parameters. The default is False.
+    co_base: float, optional
+        Baseline Cardiac output (L/min). The default is 6.5 L/min.
+    map_base: float, optional
+        Baseline mean arterial pressure (mmHg). The default is 90mmHg.
 
     Attributes
     ----------
@@ -382,34 +424,40 @@ class Hemo_PD_model():
         Mean arterial pressure.
     co : float
         Cardiac output.
-    """
+    
+    References
+    ----------
+    .. [10]  H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, 
+            “Norepinephrine kinetics and dynamics in septic shock and trauma patients,”
+            BJA: British Journal of Anaesthesia, vol. 95, no. 6, pp. 782–788, Dec. 2005,
+            doi: 10.1093/bja/aei261.
+    .. [11]  X. Monnet, J. Jabot, J. Maizel, C. Richard, and J.-L. Teboul,
+            “Norepinephrine increases cardiac preload and reduces preload dependency assessed by passive leg
+            raising in septic shock patients”
+            Critical Care Medicine, vol. 39, no. 4, p. 689, Apr. 2011, doi: 10.1097/CCM.0b013e318206d2a3.
+    .. [12]  C. Jeleazcov, M. Lavielle, J. Schüttler, and H. Ihmsen,
+            “Pharmacodynamic response modelling of arterial blood pressure in adult
+            volunteers during propofol anaesthesia,”
+            BJA: British Journal of Anaesthesia,
+            vol. 115, no. 2, pp. 213–226, Aug. 2015, doi: 10.1093/bja/aeu553.
+    .. [13]  J. E. Fairfield, A. Dritsas, and R. J. Beale,
+            “HAEMODYNAMIC EFFECTS OF PROPOFOL: INDUCTION WITH 2.5 MG KG-1,”
+            British Journal of Anaesthesia, vol. 67, no. 5, pp. 618–620, Nov. 1991, doi: 10.1093/bja/67.5.618.
+    .. [14]  J. F. Standing, G. B. Hammer, W. J. Sam, and D. R. Drover,
+            “Pharmacokinetic–pharmacodynamic modeling of the hypotensive effect of
+            remifentanil in infants undergoing cranioplasty,”
+            Pediatric Anesthesia, vol. 20, no. 1, pp. 7–18, 2010, doi: 10.1111/j.1460-9592.2009.03174.x.
+    .. [15]  C. Chanavaz et al.,
+            “Haemodynamic effects of remifentanil in children with and
+            without intravenous atropine. An echocardiographic study,”
+            BJA: British Journal of Anaesthesia, vol. 94, no. 1, pp. 74–79, Jan. 2005, doi: 10.1093/bja/aeh293.
 
+    """
     def __init__(self, nore_param: list = None, propo_param: list = None,
                  remi_param: list = None, random: bool = False,
                  co_base: float = 6.5, map_base: float = 90):
         """
         Initialize the class.
-
-        Parameters
-        ----------
-        nore_param : list, optional
-            List of hill curve parameters for Norepinephrine action [Emax_map, c50_map, gamma_map,
-                                                                     Emax_co, c50_co, gamma_co].
-            The default is None.
-        propo_param : list, optional
-           List of hill curve parameters for Propofol action [emax_SAP, emax_DAP, c50_map_1, c50_map_2,
-                                                              gamma_map_1, gamma_map_2, Emax_co, c50_co, gamma_co].
-            The default is None.
-        remi_param : list, optional
-            List of hill curve parameters for Relifentanil action [Emax_map, c50_map, gamma_map,
-                                                                   Emax_co, c50_co, gamma_co].
-            The default is None.
-        random : bool, optional
-            Add uncertainties in the parameters. The default is False.
-        co_base: float, optional
-            Baseline Cardiac output (L/min). The default is 6.5 L/min.
-        map_base: float, optional
-            Baseline mean arterial pressure (mmHg). The default is 90mmHg.
 
         Returns
         -------
