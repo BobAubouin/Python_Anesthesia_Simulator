@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "python_anesthesia_simulator"
-version = "0.0.3"
+version = "0.0.4"
 authors = [
   { name="Bob Aubouin--Pairault", email="bob.aubouin@tutanota.com" },
 ]
