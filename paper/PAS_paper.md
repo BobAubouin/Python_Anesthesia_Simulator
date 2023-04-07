@@ -119,6 +119,6 @@ Feedback and input from the community are welcome, in particular, to implement a
 
 # Acknowledgements
 
-This work has been partially supported by the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01) funded by the *French program Investissement d’avenir* and the French-Japanses ANR-JST CyberAI project. The authors also thank Mathias Réus for his help with practical Python programming and packaging.
+This work has been partially supported by the LabEx PERSYVAL-Lab (ANR-11-LABX-0025-01) funded by the *French program Investissement d’avenir* and the *French-Japanese ANR-JST CyphAI* project. The authors also thank Mathias Réus for his help with practical Python programming and packaging.
 
 # References
