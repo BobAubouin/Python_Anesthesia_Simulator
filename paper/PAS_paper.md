@@ -13,11 +13,11 @@ authors:
     affiliation: "1, 2" # (Multiple affiliations must be quoted)
     email: bob.aubouin-pairault@gipsa-lab.fr
   - name: Mirko Fiacchini
-	orcid: 0000-0002-3601-0302
-	affiliation: 1
-	email: mirko.fiacchini@gipsa-lab.fr
+    orcid: 0000-0002-3601-0302
+    affiliation: 1
+    email: mirko.fiacchini@gipsa-lab.fr
   - name: Thao Dang
-	orcid: 0000-0002-3637-1415
+    orcid: 0000-0002-3637-1415
     affiliation: 2
     email: thao.dang@univ-grenoble-alpes.fr
 affiliations:
