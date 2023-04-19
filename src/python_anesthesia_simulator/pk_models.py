@@ -461,9 +461,9 @@ class CompartmentModel:
             k31 = cl3 / v3
 
             # Matrices system definition
-            A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0, 0],
-                          [k12, -k21, 0, 0, 0, 0],
-                          [k13, 0, -k31, 0, 0, 0],
+            A = np.array([[-(k10 + k12 + k13), k12, k13, 0, 0, 0],
+                          [k21, -k21, 0, 0, 0, 0],
+                          [k31, 0, -k31, 0, 0, 0],
                           [ke0, 0, 0, -ke0, 0, 0],
                           [ke1_map, 0, 0, 0, -ke1_map, 0],
                           [ke2_map, 0, 0, 0, 0, -ke2_map]])/60  # 1/s
@@ -491,9 +491,9 @@ class CompartmentModel:
             k31 = cl3 / v3
 
             # Matrices system definition
-            A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0],
-                          [k12, -k21, 0, 0, 0],
-                          [k13, 0, -k31, 0, 0],
+            A = np.array([[-(k10 + k12 + k13), k12, k13, 0, 0],
+                          [k21, -k21, 0, 0, 0],
+                          [k31, 0, -k31, 0, 0],
                           [ke0, 0, 0, -ke0, 0],
                           [ke_map, 0, 0, 0, -ke_map]])/60  # 1/s
 
