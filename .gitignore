@@ -8,3 +8,5 @@ example/.ipynb_checkpoints/
 *.back
 # docs folder
 docs/
+# vscode
+.vscode/
