@@ -14,7 +14,9 @@ requires-python = ">=3.9"
 dependencies=[
     "numpy",
     "control==0.9.3.post2",
-    "matplotlib"
+    "matplotlib",
+    "casadi",
+    "pandas"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
