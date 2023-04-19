@@ -8,7 +8,8 @@ version = "0.0.4"
 authors = [
   { name="Bob Aubouin--Pairault", email="bob.aubouin@tutanota.com" },
 ]
-description = "Python version of an anesthesia simlator."
+description = """Anesthesia simulator: modellize the effect of drugs (Propofol, Remifentanil, Norepinephrine) \
+                 during general anesthesia. Specially build for control design."""
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies=[
