@@ -440,31 +440,10 @@ class CompartmentModel:
             w_cl1 = 0.974
 
         if drug == 'Propofol':
-            # drug amount transfer rates [1/min]
-            k10 = cl1 / v1
-            k12 = cl2 / v1
-            k13 = cl3 / v1
-            k21 = cl2 / v2
-            k31 = cl3 / v3
-
-            # Nominal Matrices system definition
-            A_nom = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0, 0],
-                              [k12, -k21, 0, 0, 0, 0],
-                              [k13, 0, -k31, 0, 0, 0],
-                              [ke0, 0, 0, -ke0, 0, 0],
-                              [ke1_map, 0, 0, 0, -ke1_map, 0],
-                              [ke2_map, 0, 0, 0, 0, -ke2_map]])/60  # 1/s
-
-            B_nom = np.transpose(np.array([[1/v1, 0, 0, 0, 0, 0]]))  # 1/L
-            C = np.array([[0, 0, 0, 1, 0, 0]])
-            D = np.array([[0]])
-
-            # Introduce inter-patient variability
-            if random is True:
+            if random:
                 if model == 'Marsh':
                     print("Warning: the standard deviation of the Marsh model are not know," +
                           " it is set to 100% for each variable")
-
                 v1 *= np.exp(np.random.normal(scale=w_v1))
                 v2 *= np.exp(np.random.normal(scale=w_v2))
                 v3 *= np.exp(np.random.normal(scale=w_v3))
@@ -474,20 +453,6 @@ class CompartmentModel:
                 ke0 *= np.exp(np.random.normal(scale=w_ke0))
                 ke1_map *= np.exp(np.random.normal(scale=w_ke1_map))
                 ke2_map *= np.exp(np.random.normal(scale=w_ke2_map))
-
-                # random Matrices system definition
-                A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0, 0],
-                              [k12, -k21, 0, 0, 0, 0],
-                              [k13, 0, -k31, 0, 0, 0],
-                              [ke0, 0, 0, -ke0, 0, 0],
-                              [ke1_map, 0, 0, 0, -ke1_map, 0],
-                              [ke2_map, 0, 0, 0, 0, -ke2_map]])/60  # 1/s
-
-                B = np.transpose(np.array([[1/v1, 0, 0, 0, 0, 0]]))  # 1/L
-            else:
-                A = A_nom
-                B = B_nom
-        elif drug == 'Remifentanil':
             # drug amount transfer rates [1/min]
             k10 = cl1 / v1
             k12 = cl2 / v1
@@ -495,23 +460,20 @@ class CompartmentModel:
             k21 = cl2 / v2
             k31 = cl3 / v3
 
-            # Nominal Matrices system definition
-            A_nom = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0],
-                              [k12, -k21, 0, 0, 0],
-                              [k13, 0, -k31, 0, 0],
-                              [ke0, 0, 0, -ke0, 0],
-                              [ke_map, 0, 0, 0, -ke_map]])/60  # 1/s
+            # Matrices system definition
+            A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0, 0],
+                          [k12, -k21, 0, 0, 0, 0],
+                          [k13, 0, -k31, 0, 0, 0],
+                          [ke0, 0, 0, -ke0, 0, 0],
+                          [ke1_map, 0, 0, 0, -ke1_map, 0],
+                          [ke2_map, 0, 0, 0, 0, -ke2_map]])/60  # 1/s
 
-            B_nom = np.transpose(np.array([[1/v1, 0, 0, 0, 0]]))  # 1/L
-            C = np.array([[0, 0, 0, 1, 0]])
+            B = np.transpose(np.array([[1/v1, 0, 0, 0, 0, 0]]))  # 1/L
+            C = np.array([[0, 0, 0, 1, 0, 0]])
             D = np.array([[0]])
 
-            # Introduce inter-patient variability
-            if random is True:
-                if model == 'Marsh':
-                    print("Warning: the standard deviation of the Marsh model are not know," +
-                          " it is set to 100% for each variable")
-
+        elif drug == 'Remifentanil':
+            if random:
                 v1 *= np.exp(np.random.normal(scale=w_v1))
                 v2 *= np.exp(np.random.normal(scale=w_v2))
                 v3 *= np.exp(np.random.normal(scale=w_v3))
@@ -520,35 +482,39 @@ class CompartmentModel:
                 cl3 *= np.exp(np.random.normal(scale=w_cl3))
                 ke0 *= np.exp(np.random.normal(scale=w_ke0))
                 ke_map *= np.exp(np.random.normal(scale=w_ke_map))
-                A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0],
-                              [k12, -k21, 0, 0, 0],
-                              [k13, 0, -k31, 0, 0],
-                              [ke0, 0, 0, -ke0, 0],
-                              [ke_map, 0, 0, 0, -ke_map]])/60  # 1/s
 
-                B = np.transpose(np.array([[1/v1, 0, 0, 0, 0]]))  # 1/L
-            else:
-                A = A_nom
-                B = B_nom
+            # drug amount transfer rates [1/min]
+            k10 = cl1 / v1
+            k12 = cl2 / v1
+            k13 = cl3 / v1
+            k21 = cl2 / v2
+            k31 = cl3 / v3
+
+            # Matrices system definition
+            A = np.array([[-(k10 + k12 + k13), k21, k31, 0, 0],
+                          [k12, -k21, 0, 0, 0],
+                          [k13, 0, -k31, 0, 0],
+                          [ke0, 0, 0, -ke0, 0],
+                          [ke_map, 0, 0, 0, -ke_map]])/60  # 1/s
+
+            B = np.transpose(np.array([[1/v1, 0, 0, 0, 0]]))  # 1/L
+            C = np.array([[0, 0, 0, 1, 0]])
+            D = np.array([[0]])
+
         elif drug == 'Norepinephrine':
+            if random:
+                v1 *= np.exp(np.random.normal(scale=w_v1))
+                cl1 *= np.exp(np.random.normal(scale=w_cl1))
             # drug amount transfer rates [1/min]
             k10 = cl1 / v1
 
-            # Nominal Matrices system definition
-            A_nom = np.array([-k10])/60  # 1/s
+            # Matrices system definition
+            A = np.array([-k10])/60  # 1/s
 
-            B_nom = np.array([1/v1])  # 1/L
+            B = np.array([1/v1])  # 1/L
             C = np.array([1])
             D = np.array([0])
-            if random is True:
-                v1 *= np.exp(np.random.normal(scale=w_v1))
-                cl1 *= np.exp(np.random.normal(scale=w_cl1))
 
-                A = np.array([-k10])/60  # 1/s
-                B = np.array([1/v1])  # 1/L
-            else:
-                A = A_nom
-                B = B_nom
         self.A_init = A
         self.B_init = B
         self.v1 = v1
