@@ -354,16 +354,16 @@ class Hemo_PD_model():
     Parameters
     ----------
     nore_param : list, optional
-        List of hill curve parameters for Norepinephrine action [Emax_map, c50_map, gamma_map,
-                                                                    Emax_co, c50_co, gamma_co].
+        List of hill curve parameters for Norepinephrine action 
+        [Emax_map, c50_map, gamma_map, Emax_co, c50_co, gamma_co].
         The default is None.
     propo_param : list, optional
-        List of hill curve parameters for Propofol action [emax_SAP, emax_DAP, c50_map_1, c50_map_2,
-                                                            gamma_map_1, gamma_map_2, Emax_co, c50_co, gamma_co].
+        List of hill curve parameters for Propofol action 
+        [emax_SAP, emax_DAP, c50_map_1, c50_map_2, gamma_map_1, gamma_map_2, Emax_co, c50_co, gamma_co].
         The default is None.
     remi_param : list, optional
-        List of hill curve parameters for Relifentanil action [Emax_map, c50_map, gamma_map,
-                                                                Emax_co, c50_co, gamma_co].
+        List of hill curve parameters for Relifentanil action 
+        [Emax_map, c50_map, gamma_map, Emax_co, c50_co, gamma_co].
         The default is None.
     random : bool, optional
         Add uncertainties in the parameters. The default is False.
@@ -424,7 +424,7 @@ class Hemo_PD_model():
         Mean arterial pressure.
     co : float
         Cardiac output.
-    
+
     References
     ----------
     .. [10]  H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, 
@@ -453,6 +453,7 @@ class Hemo_PD_model():
             BJA: British Journal of Anaesthesia, vol. 94, no. 1, pp. 74–79, Jan. 2005, doi: 10.1093/bja/aeh293.
 
     """
+
     def __init__(self, nore_param: list = None, propo_param: list = None,
                  remi_param: list = None, random: bool = False,
                  co_base: float = 6.5, map_base: float = 90):
