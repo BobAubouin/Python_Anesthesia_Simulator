@@ -242,14 +242,13 @@ class Patient:
             self.map += np.random.normal(scale=0.5)
             self.co += np.random.normal(scale=0.1)
 
-        
         # Save data
         if self.save_data_bool:
             # compute time
             self.Time += self.ts
             self.save_data([u_propo, u_remi, u_nore])
 
-        return(self.bis, self.co, self.map, self.tol)
+        return (self.bis, self.co, self.map, self.tol)
 
     def find_equilibrium(self, bis_target: float, tol_target: float,
                          map_target: float) -> tuple[float, float, float]:
@@ -515,7 +514,7 @@ class Patient:
                         'u_propo', 'u_remi', 'u_nore',  # inputs
                         'x_propo_1', 'x_propo_2', 'x_propo_3', 'x_propo_4', 'x_propo_5', 'x_propo_6',  # x_PK_propo
                         'x_remi_1', 'x_remi_2', 'x_remi_3', 'x_remi_4', 'x_remi_5',  # x_PK_remi
-                        'c_blood_nore', 'blood_volume']  # nore concentration and blood volume
+                        'x_nore', 'blood_volume']  # nore concentration and blood volume
 
         self.dataframe = pd.DataFrame(columns=column_names)
 
@@ -526,7 +525,7 @@ class Patient:
         new_line = {'Time': self.Time,
                     'BIS': self.bis, 'TOL': self.tol, 'MAP': self.map, 'CO': self.co,  # outputs
                     'u_propo': inputs[0], 'u_remi': inputs[1], 'u_nore': inputs[2],  # inputs
-                    'c_blood_nore': self.nore_pk.x[0],  # concentration
+                    'x_nore': self.nore_pk.x[0],  # concentration
                     'blood_volume': self.blood_volume}  # blood volume
 
         line_x_propo = {'x_propo_' + str(i+1): self.propo_pk.x[i] for i in range(6)}
@@ -535,3 +534,67 @@ class Patient:
         new_line.update(line_x_remi)
 
         self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line)), ignore_index=True)
+
+    def full_sim(self, u_propo: list = None, u_remi: list = None, u_nore: list = None):
+        r"""Simulate the patient model with the given inputs.
+
+        Parameters
+        ----------
+        u_propo : list
+            Propofol infusion rate (mg/s).
+        u_remi : list
+            Remifentanil infusion rate (µg/s).
+        u_nore : list
+            Norepinephrine infusion rate (µg/s).
+
+        Returns
+        -------
+        pandas.Dataframes
+            Dataframe with all the data.
+
+        """
+        if u_propo is None and u_remi is None and u_nore is None:
+            raise ValueError('No input given')
+        if u_propo is None:
+            if u_remi is None:
+                u_propo = [0]*len(u_nore)
+            else:
+                u_propo = [0]*len(u_remi)
+        if u_remi is None:
+            if u_propo is None:
+                u_remi = [0]*len(u_nore)
+            else:
+                u_remi = [0]*len(u_propo)
+        if u_nore is None:
+            if u_propo is None:
+                u_nore = [0]*len(u_remi)
+            else:
+                u_nore = [0]*len(u_propo)
+        if not len(u_propo) == len(u_remi) == len(u_nore):
+            raise ValueError('Inputs must have the same length')
+
+        # init the dataframe
+        self.init_dataframe()
+
+        # simulate
+        x_propo = self.propo_pk.full_sim(u_propo)
+        x_remi = self.remi_pk.full_sim(u_remi)
+        x_nore = self.nore_pk.full_sim(u_nore)
+
+        # compute outputs
+        bis = self.bis_pd.compute_bis(x_propo[3, :], x_remi[3, :])
+        tol = self.tol_pd.compute_tol(x_propo[3, :], x_remi[3, :])
+        map, co = self.hemo_pd.compute_hemo(x_propo[4:, :], x_remi[4, :], x_nore[0, :])
+
+        # save data
+        df = pd.DataFrame({'Time': np.arange(0, len(u_propo)*self.ts, self.ts),
+                           'BIS': bis, 'TOL': tol, 'MAP': map, 'CO': co,
+                           'u_propo': u_propo, 'u_remi': u_remi, 'u_nore': u_nore})
+
+        for i in range(6):
+            df['x_propo_' + str(i+1)] = x_propo[i, :]
+        for i in range(5):
+            df['x_remi_' + str(i+1)] = x_remi[i, :]
+        df['x_nore'] = x_nore[0, :]
+
+        return df

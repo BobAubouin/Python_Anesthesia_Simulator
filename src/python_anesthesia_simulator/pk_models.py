@@ -543,12 +543,31 @@ class CompartmentModel:
         Returns
         -------
         numpy array
-            Actual effect site concentration (µg/mL for Propofol and ng/mL for Remifentanil).
+            Actual effect site concentration (µg/mL for Propofol and ng/mL
+            for Remifentaniland Norepinephrine).
 
         """
         self.x = self.discretize_sys.dynamics(None, self.x, u=u)  # first input is ignored
         self.y = self.discretize_sys.output(None, self.x, u=u)  # first input is ignored
         return self.y
+
+    def full_sim(self, u: list) -> list:
+        """ Simulate PK model with a given input.
+
+        Parameters
+        ----------
+        u : list
+            Infusion rate (mg/s for Propofol, µg/s for Remifentanil and Norepinephrine).
+
+        Returns
+        -------
+        numpy array
+            List of the states value during the simulation.
+            (µg/mL for Propofol and ng/mL for Remifentanil and Norepinephrine).
+
+        """
+        _, _, x = control.forced_response(self.discretize_sys, U=u, return_x=True)
+        return x
 
     def update_param_CO(self, CO_ratio: float):
         """Update PK coefficient with a linear function of Cardiac output value.

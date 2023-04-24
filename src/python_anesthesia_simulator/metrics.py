@@ -37,14 +37,14 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
         defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range
     US: float
         for "induction" or "total" phase. Undershoot, defined as the BIS value that exceeds the
-        imit of the defined BIS interval, namely, the 45 BIS value.
+        limit of the defined BIS interval, namely, the 45 BIS value.
     TTp : float
         Time to target (in minute) after the positive step disturbance.
     BIS_NADIRp: float
         for "maintenance" or "total" phase. Minimum BIS vamue after the positive step disturbance.
     TTpn: float
         for "maintenance" or "total" phase. Time to target (in minute) after the negative step disturbance.
-     BIS_NADIRn: float
+    BIS_NADIRn: float
         for "maintenance" or "total" phase. Maximum BIS vamue after the negative step disturbance.
 
     References
