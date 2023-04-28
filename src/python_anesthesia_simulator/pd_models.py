@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 from matplotlib import cm
 
 
-def fsig(x, C50, gam): return x**gam/(C50**gam + x**gam)  # quick definition of sigmoidal function
+def fsig(x, c50, gam): return x**gam/(c50**gam + x**gam)  # quick definition of sigmoidal function
 
 
 class BIS_model:
@@ -21,12 +21,12 @@ class BIS_model:
     Parameters
     ----------
     hill_model : str, optional
-        Only 'Bouillon' [9] is available. Ignored if  is specified.
+        Only 'Bouillon' [9] is available. Ignored if hill_param is specified.
     hill_param : list, optional
         Parameter of the Hill model (Propo Remi interaction)
-        list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
-            - C50p_BIS : Concentration at half effect for propofol effect on BIS (µg/mL)
-            - C50r_BIS : Concentration at half effect for remifentanil effect on BIS (ng/mL)
+        list [c50p_BIS, c50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
+            - c50p_BIS : Concentration at half effect for propofol effect on BIS (µg/mL)
+            - c50r_BIS : Concentration at half effect for remifentanil effect on BIS (ng/mL)
             - gamma_BIS : slope coefficient for the BIS  model,
             - beta_BIS : interaction coefficient for the BIS model,
             - E0_BIS : initial BIS,
@@ -53,7 +53,7 @@ class BIS_model:
         max effect of the drugs on BIS.
     hill_param : list
         Parameter of the Hill model (Propo Remi interaction)
-        list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]
+        list [c50p_BIS, c50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]
     c50p_init : float
         Initial value of c50p, used for blood loss modelling.
 
@@ -234,7 +234,7 @@ class TOL_model():
     model : str, optional
         Only 'Bouillon'[9] is available. Ignored if model_param is specified. The default is 'Bouillon'.
     model_param : list, optional
-        Model parameters, model_param = [C50p, C50p, gammaP, gammaR, Preopioid intensity].
+        Model parameters, model_param = [c50p, c50p, gammaP, gammaR, Preopioid intensity].
         The default is None.
     random : bool, optional
         Add uncertainties in the parameters. Ignored if model_param is specified. The default is False.
@@ -630,14 +630,14 @@ class Hemo_PD_model():
             self.c50_remi_co *= np.exp(np.random.normal(scale=w_c50_remi_co))
             self.gamma_remi_co *= np.exp(np.random.normal(scale=w_gamma_remi_co))
 
-    def compute_hemo(self, c_es_propo: list, c_es_remi: float, c_es_nore: float) -> list:
+    def compute_hemo(self, c_es_propo: list, c_es_remi: float, c_es_nore: float) -> tuple[float, float]:
         """
         Compute current MAP and CO using addition of hill curv, one for each drugs.
 
         Parameters
         ----------
         c_es_propo : list
-            Propofolconcentration on both hemodynamic effect site concentration µg/mL.
+            Propofol concentration on both hemodynamic effect site concentration µg/mL.
         c_es_remi : float
             Remifentanil hemodynamic effect site concentration µg/mL.
         c_es_nore : float
