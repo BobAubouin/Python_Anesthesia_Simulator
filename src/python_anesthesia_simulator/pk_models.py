@@ -291,8 +291,10 @@ class CompartmentModel:
                     cl2 = cl2*theta[18]
 
                 cl3 = theta[6] * (v3/v3ref)**0.75 * fQ3mat/fQ3mat_ref
-
-                ke0 = 0.146*(weight/70)**(-0.25)
+                if measurement == "venous":
+                    ke0 = 1.24*(weight/70)**(-0.25)
+                else:
+                    ke0 = 0.146*(weight/70)**(-0.25)
 
                 # Coeff variability
                 cv_v1 = v1*0.917
