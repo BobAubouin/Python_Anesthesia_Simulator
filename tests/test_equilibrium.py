@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
     ax.plot(Time, George_1.dataframe['x_propo_4'], label="Propofol")
     ax.plot(Time, George_1.dataframe['x_remi_4'], label="Remifentanil")
-    ax.plot(Time, George_1.dataframe['c_blood_nore'], label="Norepinephrine")
+    ax.plot(Time, George_1.dataframe['x_nore'], label="Norepinephrine")
     plt.title("Hypnotic effect site Concentration")
     ax.set_xlabel("Time (min)")
     plt.legend()

@@ -49,17 +49,17 @@ uP, uR = 0.13, 0.5
 start_step = 20 * 60
 end_step = 30 * 60
 x = np.zeros((11, N_simu+1))
-George_1.save_data()
-George_2.save_data()
-George_3.save_data()
+George_1.save_data([0, 0, 0])
+George_2.save_data([0, 0, 0])
+George_3.save_data([0, 0, 0])
 for index in range(N_simu):
     Dist_1 = disturbances.compute_disturbances(index*ts, dist_profil='realistic')
-    George_1.one_step(uP, uR, Dist=Dist_1, noise=False)
+    George_1.one_step(uP, uR, dist=Dist_1, noise=False)
     x[:, index+1] = A_nom @ x[:, index] + B_nom @ np.array([uP, uR])
     Dist_2 = disturbances.compute_disturbances(index*ts, dist_profil='simple')
-    George_2.one_step(uP, uR, Dist=Dist_2, noise=False)
+    George_2.one_step(uP, uR, dist=Dist_2, noise=False)
     Dist_3 = disturbances.compute_disturbances(index*ts, dist_profil='step', start_step=start_step, end_step=end_step)
-    George_3.one_step(uP, uR, Dist=Dist_3, noise=False)
+    George_3.one_step(uP, uR, dist=Dist_3, noise=False)
 
 # %% plots
 
