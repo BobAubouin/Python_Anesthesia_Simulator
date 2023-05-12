@@ -97,6 +97,12 @@ class Patient:
         Mean arterial pressure (mmHg).
     blood_volume : float
         Blood volume (L).
+    bis_noise_std : float
+        Standard deviation of the BIS noise.
+    co_noise_std : float
+        Standard deviation of the CO noise.
+    map_noise_std : float
+        Standard deviation of the MAP noise.
 
 
     """
@@ -165,6 +171,18 @@ class Patient:
         # init blood loss volume
         self.blood_volume = self.propo_pk.v1
         self.blood_volume_init = self.propo_pk.v1
+
+        # init noise model
+        self.bis_noise_std = 3
+        self.co_noise_std = 0.1
+        self.map_noise_std = 5
+        xi = 0.2
+        target_peak_fr = 0.015*2*np.pi
+        omega = target_peak_fr/np.sqrt(1-2*xi**2)
+        noise_filter = control.tf([0.1, 1], [1/omega**2, 2*xi/omega, 1])
+        self.noise_filter_d = control.sample_system(noise_filter, self.ts)
+        self.white_noise_list = np.array([[0], [0]])
+        self.filter_noise_list = np.array([[0], [0]])
 
         # Init all the output variable
         self.bis = self.bis_pd.compute_bis(0, 0)
@@ -238,9 +256,7 @@ class Patient:
 
         # add noise
         if noise:
-            self.bis += np.random.normal(scale=3)
-            self.map += np.random.normal(scale=0.5)
-            self.co += np.random.normal(scale=0.1)
+            self.add_noise()
 
         # Save data
         if self.save_data_bool:
@@ -249,6 +265,29 @@ class Patient:
             self.save_data([u_propo, u_remi, u_nore])
 
         return (self.bis, self.co, self.map, self.tol)
+
+    def add_noise(self):
+        r"""
+        Add noise on the outputs of the model (except TOL).
+
+        The MAP and CO noises are considered white noise while the BIS noise is filtered.
+        The filter of the BIS noise is a second order low pass filter with a cut-off frequency of 0.015 Hz.
+
+        """
+        # compute filter noise for BIS
+        # white noise
+        self.white_noise_list = np.append(self.white_noise_list, np.random.normal(scale=self.bis_noise_std))
+        self.white_noise_list = self.white_noise_list[-2:]
+        # filter noise
+        noise_t = self.noise_filter_d.num[0][0] @ self.white_noise_list - \
+            self.noise_filter_d.den[0][0][1:] @ self.filter_noise_list
+        self.filter_noise_list = np.append(self.filter_noise_list, noise_t)
+        self.filter_noise_list = self.filter_noise_list[-2:]
+
+        self.bis += noise_t
+        # random noise for MAP and CO
+        self.map += np.random.normal(scale=self.map_noise_std)
+        self.co += np.random.normal(scale=self.co_noise_std)
 
     def find_equilibrium(self, bis_target: float, tol_target: float,
                          map_target: float) -> tuple[float, float, float]:
@@ -533,7 +572,7 @@ class Patient:
         new_line.update(line_x_propo)
         new_line.update(line_x_remi)
 
-        self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line)), ignore_index=True)
+        self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line, index=[1])), ignore_index=True)
 
     def full_sim(self, u_propo: list = None, u_remi: list = None, u_nore: list = None):
         r"""Simulate the patient model with the given inputs.
