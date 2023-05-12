@@ -177,12 +177,13 @@ class Patient:
         self.co_noise_std = 0.1
         self.map_noise_std = 5
         xi = 0.2
-        target_peak_fr = 0.015*2*np.pi
+        target_peak_fr = 0.03*2*np.pi
         omega = target_peak_fr/np.sqrt(1-2*xi**2)
         noise_filter = control.tf([0.1, 1], [1/omega**2, 2*xi/omega, 1])
         self.noise_filter_d = control.sample_system(noise_filter, self.ts)
-        self.white_noise_list = np.array([[0], [0]])
-        self.filter_noise_list = np.array([[0], [0]])
+        white_noise = np.random.normal(0, self.bis_noise_std, 1000)
+        _, self.bis_noise = control.forced_response(self.noise_filter_d, U=white_noise, squeeze=True)
+        self.noise_index = 0
 
         # Init all the output variable
         self.bis = self.bis_pd.compute_bis(0, 0)
@@ -271,20 +272,19 @@ class Patient:
         Add noise on the outputs of the model (except TOL).
 
         The MAP and CO noises are considered white noise while the BIS noise is filtered.
-        The filter of the BIS noise is a second order low pass filter with a cut-off frequency of 0.015 Hz.
+        The filter of the BIS noise is a second order low pass filter with a cut-off frequency of 0.03 Hz.
 
         """
         # compute filter noise for BIS
         # white noise
-        self.white_noise_list = np.append(self.white_noise_list, np.random.normal(scale=self.bis_noise_std))
-        self.white_noise_list = self.white_noise_list[-2:]
-        # filter noise
-        noise_t = self.noise_filter_d.num[0][0] @ self.white_noise_list - \
-            self.noise_filter_d.den[0][0][1:] @ self.filter_noise_list
-        self.filter_noise_list = np.append(self.filter_noise_list, noise_t)
-        self.filter_noise_list = self.filter_noise_list[-2:]
-
-        self.bis += noise_t
+        self.noise_index += 1
+        if self.noise_index >= len(self.bis_noise):
+            self.noise_index = 0
+            # new list noise
+            white_noise = np.random.normal(0, self.bis_noise_std, 1000)
+            _, self.bis_noise = control.forced_response(self.noise_filter_d, U=white_noise, squeeze=True)
+        self.bis += self.bis_noise[self.noise_index]
+        self.bis = min(100, self.bis)
         # random noise for MAP and CO
         self.map += np.random.normal(scale=self.map_noise_std)
         self.co += np.random.normal(scale=self.co_noise_std)
