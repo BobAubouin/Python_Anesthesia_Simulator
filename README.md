@@ -19,7 +19,7 @@ Documentation is available in the _Documentation.pdf_ file and different noteboo
 
 ## Guidelines
 - To report a bug or request a feature please open an issue.
-- To contribute, you can fork the repository and ask for a push request.
+- To contribute, you can fork the repository and ask for a pull request.
 
 If you want to contact me for any reason, I'm available by mail [mail](bob.aubouin-pairault@gipsa-lab.fr).
 
