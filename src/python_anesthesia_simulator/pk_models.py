@@ -11,7 +11,13 @@ class CompartmentModel:
 
     Use a 6 compartement model for propofol, a 5 compartement model for remifentanil,
     and a 1 compartement model for norepinephrine.
-    The model is a LTI model. The state vector is the concentration of the drug in each compartement.
+    The model is a LTI model with the form:
+    .. math::  x(k+1)= Ax(k) + Bu(k)
+    .. math::  y(k) = Cx(k)
+
+    The state vector is the concentration of the drug in each compartement in the following order:
+    blood, muscles, fat, BIS effect-site, MAP effect-site 1, MAP effect-site 2.
+    The output of the model is the BIS effect-site concentration.
 
     Parameters
     ----------
@@ -536,6 +542,7 @@ class CompartmentModel:
         """Simulate one step of PK model.
 
         .. math:: x^+ = Ax + Bu
+        .. math:: y = Cx
 
         Parameters
         ----------
@@ -546,7 +553,7 @@ class CompartmentModel:
         -------
         numpy array
             Actual effect site concentration (µg/mL for Propofol and ng/mL
-            for Remifentaniland Norepinephrine).
+            for Remifentanil and Norepinephrine).
 
         """
         self.x = self.discretize_sys.dynamics(None, self.x, u=u)  # first input is ignored
