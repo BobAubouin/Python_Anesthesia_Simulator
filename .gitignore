@@ -3,7 +3,7 @@
 # Obsidian cache
 paper/.obsidian/
 # Jupiter Cache
-example/.ipynb_checkpoints/
+.ipynb_checkpoints
 # backup files
 *.back
 # docs folder
