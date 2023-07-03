@@ -4,7 +4,7 @@
 # Python_Anesthesia_Simulator
 The Python Anesthesia Simulator (PAS) models the effect of drugs on physiological variables during total intravenous anesthesia. It is particularly dedicated to the control community, to be used as a benchmark for the design of multidrug controllers. The available drugs are Propofol, Remifentanil, and Norepinephrine, the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardiac Output (CO), and Tolerance of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate inter-patient variability. Blood loss can also be simulated to assess the controller's performance in a shock scenario. Finally, PAS includes standard disturbance profiles and metrics computation to facilitate the evaluation of the controller's performances.
 
-- **Documentation:** https://python-anesthesia-simulator.readthedocs.io
+- **Documentation and examples:** https://python-anesthesia-simulator.readthedocs.io
 
 ## Installation
 Download the git repository and use pip to install the package:
@@ -16,9 +16,6 @@ The package can be imported in your python script with:
 ```python
     import python_anesthesia_simulator as pas
 ```
-
-## Examples
-Available in the dedicated folder.
 
 ## Guidelines
 - To report a bug or request a feature please open an issue.
@@ -32,14 +29,12 @@ If you want to contact me for any reason, I'm available by [mail](bob.aubouin-pa
     ├─── src
     |   ├─── python_anesthesia_simulator           # Simulator library + metrics function
     |
-    ├── example            # example of controller test pipeline with the library 
-    ├── ...
     ├── paper              # markdown paper for JOSS submition
-    ├── ...
+    |
     ├── tests              # files for testing the package
-    ├── ...
+    |
     ├── docs               # files for generating the docs
-    ├── ...    
+    | 
     ├── LICENSE
     ├── pyproject.toml      # packaging file
     ├── requirements.txt
