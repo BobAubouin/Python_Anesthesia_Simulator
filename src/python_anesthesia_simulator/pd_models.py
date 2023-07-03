@@ -255,6 +255,13 @@ class TOL_model():
     pre_intensity : float
         Preopioid intensity.
 
+        References
+    ----------
+    .. [Bouillon2004]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
+            Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
+            Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
+            doi: 10.1097/00000542-200406000-00006.
+
     """
 
     def __init__(self, model: str = 'Bouillon', model_param: list = None, random: bool = False):
