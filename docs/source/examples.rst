@@ -4,9 +4,9 @@
 Examples
 ********
 
-The source code for the examples below are available in the `examples/`
+The source code for the examples below are available in the `docs/source/examples/`
 subdirecory of the source code distribution.  The codes can also be accessed online
-via the `PAS GitHub repository <https://github.com/BobAubouin/Python_Anesthesia_Simulator/tree/main/example>`_.
+via the `PAS GitHub repository <https://github.com/BobAubouin/Python_Anesthesia_Simulator/tree/main/docs/source/examples>`_.
 
 Jupyter notebooks
 =================
