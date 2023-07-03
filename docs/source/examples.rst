@@ -1,0 +1,23 @@
+.. _examples:
+
+********
+Examples
+********
+
+The source code for the examples below are available in the `examples/`
+subdirecory of the source code distribution.  The codes can also be accessed online
+via the `PAS GitHub repository <https://github.com/BobAubouin/Python_Anesthesia_Simulator/tree/main/example>`_.
+
+Jupyter notebooks
+=================
+
+The examples below use `PAS` in a Jupyter notebook environment.
+These notebooks demonstrate the use of the toolbox for different applications.
+
+.. toctree::
+   :numbered:
+   :maxdepth: 1
+
+   /examples/blood_loss_simu
+   /examples/check_vitalDB_model
+   /examples/Merigo_PID

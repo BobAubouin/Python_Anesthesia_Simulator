@@ -255,7 +255,7 @@ class TOL_model():
     pre_intensity : float
         Preopioid intensity.
 
-        References
+    References
     ----------
     .. [Bouillon2004]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
             Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic

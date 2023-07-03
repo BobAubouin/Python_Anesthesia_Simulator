@@ -211,7 +211,7 @@ class Patient:
         blood_rate : float, optional
             Fluid rates from blood volume (mL/min), negative is bleeding while positive is a transfusion.
             The default is 0.
-        Dist : list, optional
+        dist : list, optional
             Disturbance vector on [BIS (%), MAP (mmHg), CO (L/min)]. The default is [0]*3.
         noise : bool, optional
             bool to add measurement noise on the outputs. The default is True.

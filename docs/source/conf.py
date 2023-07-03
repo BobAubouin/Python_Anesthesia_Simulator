@@ -12,6 +12,7 @@
 #
 import os
 import sys
+# sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../..'))
 
 
@@ -30,7 +31,18 @@ release = '0.0.4'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['numpydoc', 'sphinx_rtd_theme']  # 'sphynx.ext.autodoc', 'sphynx.ext.viewcode',
+extensions = ['numpydoc', 'sphinx_rtd_theme',
+              'sphinx.ext.autodoc', 'nbsphinx']  # 'sphynx.ext.autodoc', 'sphynx.ext.viewcode',
+
+# list of autodoc directive flags that should be automatically applied
+# to all autodoc directives.
+autodoc_default_options = {
+    'members': True,
+    'inherited-members': True,
+    'exclude-members': '__init__, __weakref__, __repr__, __str__'
+}
+
+nbsphinx_allow_errors = True  # Continue through Jupyter errors
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -54,7 +66,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 # numpydoc configuration
-# numpydoc_show_class_members = False
+numpydoc_show_class_members = False
 
 # If true, the current module name will be prepended to all description
 # unit titles (such as .. function::).

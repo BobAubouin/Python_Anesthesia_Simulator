@@ -24,6 +24,7 @@ understand how to use it.
 
    intro
    src.python_anesthesia_simulator
+   examples
 
 
 
