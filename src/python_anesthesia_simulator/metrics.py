@@ -5,7 +5,7 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
                             start_step: float = 600, end_step: float = 1200):
     """Compute metrics for closed loop anesthesia.
 
-    This function compute the control metrics initially proposed in [1].
+    This function compute the control metrics initially proposed in [Ionescu2008]_.
 
 
     Parameters
@@ -26,15 +26,15 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
     Returns
     -------
     TT : float
-        Observed time-to-target (in minute) required for reaching first time the target interval of [55,45] BIS values
+        Observed time-to-target (in minute) required for reaching first time the target interval of [55,45] BIS values.
     BIS_NADIR: float
-        for "induction" or "total" phase. The lowest observed BIS value during induction phase
+        for "induction" or "total" phase. The lowest observed BIS value during induction phase.
     ST10: float
         for "induction" or "total" phase. Settling time (in minute) on the reference BIS value,
-        defined within ± 5BIS(i.e., between 45 and 55 BIS)and stay within this BIS range
+        defined within ± 5BIS(i.e., between 45 and 55 BIS)and stay within this BIS range.
     ST20: float
         for "induction" or "total" phase. Settling time (in minute) on the reference BIS value,
-        defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range
+        defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range.
     US: float
         for "induction" or "total" phase. Undershoot, defined as the BIS value that exceeds the
         limit of the defined BIS interval, namely, the 45 BIS value.
@@ -49,7 +49,7 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
 
     References
     ----------
-    .. [1]  C. M. Ionescu, R. D. Keyser, B. C. Torrico, T. D. Smet, M. M. Struys, and J. E. Normey-Rico,
+    .. [Ionescu2008]  C. M. Ionescu, R. D. Keyser, B. C. Torrico, T. D. Smet, M. M. Struys, and J. E. Normey-Rico,
             “Robust Predictive Control Strategy Applied for Propofol Dosing Using BIS as a Controlled
             Variable During Anesthesia,” IEEE Transactions on Biomedical Engineering, vol. 55, no.
             9, pp. 2161–2170, Sep. 2008, doi: 10.1109/TBME.2008.923142.

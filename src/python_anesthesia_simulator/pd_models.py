@@ -21,7 +21,7 @@ class BIS_model:
     Parameters
     ----------
     hill_model : str, optional
-        Only 'Bouillon' [9] is available. Ignored if hill_param is specified.
+        Only 'Bouillon' [Bouillon2004]_ is available. Ignored if hill_param is specified.
     hill_param : list, optional
         Parameter of the Hill model (Propo Remi interaction)
         list [c50p_BIS, c50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
@@ -59,10 +59,11 @@ class BIS_model:
 
     References
     ----------
-    .. [9]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
+    .. [Bouillon2004]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
             Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
             Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
             doi: 10.1097/00000542-200406000-00006.
+
     """
 
     def __init__(self, hill_model: str = 'Bouillon', hill_param: list = None,
@@ -150,7 +151,7 @@ class BIS_model:
     def update_param_blood_loss(self, v_ratio: float):
         """Update PK coefficient to mimic a blood loss.
 
-        Update the c50p parameters thanks to the blood volume ratio.
+        Update the c50p parameters thanks to the blood volume ratio. The values are estimated from [Johnson2003]_.
 
         Parameters
         ----------
@@ -161,15 +162,17 @@ class BIS_model:
         -------
         None.
 
-        """
-        # value estimated from K. B. Johnson et al., “The Influence of Hemorrhagic Shock on Propofol: A Pharmacokinetic
-        # and Pharmacodynamic Analysis,” Anesthesiology, vol. 99, no. 2, pp. 409–420, Aug. 2003,
-        # doi: 10.1097/00000542-200308000-00023.
+        References
+        ----------
+        .. [Johnson2003]  K. B. Johnson et al., “The Influence of Hemorrhagic Shock on Propofol: A Pharmacokinetic
+            and Pharmacodynamic Analysis,” Anesthesiology, vol. 99, no. 2, pp. 409–420, Aug. 2003,
+            doi: 10.1097/00000542-200308000-00023.
 
+        """
         self.c50p = self.c50p_init - 3/0.5*(1-v_ratio)
 
     def inverse_hill(self, BIS: float, c_es_remi: float = 0) -> float:
-        """Compute Propofol effect site concentration from BIS and Remifentanil Effect site concentration.
+        """Compute Propofol effect site concentration from BIS and Remifentanil effect site concentration.
 
         Parameters
         ----------
@@ -232,7 +235,7 @@ class TOL_model():
     Parameters
     ----------
     model : str, optional
-        Only 'Bouillon'[9] is available. Ignored if model_param is specified. The default is 'Bouillon'.
+        Only 'Bouillon'[Bouillon2004]_ is available. Ignored if model_param is specified. The default is 'Bouillon'.
     model_param : list, optional
         Model parameters, model_param = [c50p, c50p, gammaP, gammaR, Preopioid intensity].
         The default is None.
@@ -252,12 +255,6 @@ class TOL_model():
     pre_intensity : float
         Preopioid intensity.
 
-    References
-    ----------
-    .. [9]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil Regarding Hypnosis,
-            Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic Approximate Entropy,” Anesthesiology,
-            vol. 100, no. 6, pp. 1353–1372, Jun. 2004, doi: 10.1097/00000542-200406000-00006.
-
     """
 
     def __init__(self, model: str = 'Bouillon', model_param: list = None, random: bool = False):
@@ -270,7 +267,7 @@ class TOL_model():
 
         """
         if model == "Bouillon":
-            # See [1] T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
+            # See [Bouillon2004] T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
             # Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
             # Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
             # doi: 10.1097/00000542-200406000-00006.
@@ -344,12 +341,12 @@ class Hemo_PD_model():
     Use the addition of sigmoid curve to model the effect of each drugs on MAP and CO.
     The following articles are used to define the parameters of the model:
 
-    - Norepinephrine to MAP: [10]
-    - Noepinephrine to CO: [11]
-    - Propofol to MAP: [12]
-    - Propofol to CO: [13]
-    - Remifentanil to MAP: [14]
-    - Remifentanil to CO: [15]
+    - Norepinephrine to MAP: [Beloeil2005]_
+    - Noepinephrine to CO: [Monnet2011]_
+    - Propofol to MAP: [Jeleazcov2011]_
+    - Propofol to CO: [Fairfield1991]_
+    - Remifentanil to MAP: [Standing2010]_
+    - Remifentanil to CO: [Chanavaz2005]_
 
     Parameters
     ----------
@@ -427,27 +424,27 @@ class Hemo_PD_model():
 
     References
     ----------
-    .. [10]  H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, 
+    .. [Beloeil2005]  H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, 
             “Norepinephrine kinetics and dynamics in septic shock and trauma patients,”
             BJA: British Journal of Anaesthesia, vol. 95, no. 6, pp. 782–788, Dec. 2005,
             doi: 10.1093/bja/aei261.
-    .. [11]  X. Monnet, J. Jabot, J. Maizel, C. Richard, and J.-L. Teboul,
+    .. [Monnet2011]  X. Monnet, J. Jabot, J. Maizel, C. Richard, and J.-L. Teboul,
             “Norepinephrine increases cardiac preload and reduces preload dependency assessed by passive leg
             raising in septic shock patients”
             Critical Care Medicine, vol. 39, no. 4, p. 689, Apr. 2011, doi: 10.1097/CCM.0b013e318206d2a3.
-    .. [12]  C. Jeleazcov, M. Lavielle, J. Schüttler, and H. Ihmsen,
+    .. [Jeleazcov2011]  C. Jeleazcov, M. Lavielle, J. Schüttler, and H. Ihmsen,
             “Pharmacodynamic response modelling of arterial blood pressure in adult
             volunteers during propofol anaesthesia,”
             BJA: British Journal of Anaesthesia,
             vol. 115, no. 2, pp. 213–226, Aug. 2015, doi: 10.1093/bja/aeu553.
-    .. [13]  J. E. Fairfield, A. Dritsas, and R. J. Beale,
+    .. [Fairfield1991]  J. E. Fairfield, A. Dritsas, and R. J. Beale,
             “HAEMODYNAMIC EFFECTS OF PROPOFOL: INDUCTION WITH 2.5 MG KG-1,”
             British Journal of Anaesthesia, vol. 67, no. 5, pp. 618–620, Nov. 1991, doi: 10.1093/bja/67.5.618.
-    .. [14]  J. F. Standing, G. B. Hammer, W. J. Sam, and D. R. Drover,
+    .. [Standing2010]  J. F. Standing, G. B. Hammer, W. J. Sam, and D. R. Drover,
             “Pharmacokinetic–pharmacodynamic modeling of the hypotensive effect of
             remifentanil in infants undergoing cranioplasty,”
             Pediatric Anesthesia, vol. 20, no. 1, pp. 7–18, 2010, doi: 10.1111/j.1460-9592.2009.03174.x.
-    .. [15]  C. Chanavaz et al.,
+    .. [Chanavaz2005]  C. Chanavaz et al.,
             “Haemodynamic effects of remifentanil in children with and
             without intravenous atropine. An echocardiographic study,”
             BJA: British Journal of Anaesthesia, vol. 94, no. 1, pp. 74–79, Jan. 2005, doi: 10.1093/bja/aeh293.

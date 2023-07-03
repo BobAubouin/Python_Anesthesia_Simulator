@@ -12,6 +12,7 @@ class CompartmentModel:
     Use a 6 compartement model for propofol, a 5 compartement model for remifentanil,
     and a 1 compartement model for norepinephrine.
     The model is a LTI model with the form:
+
     .. math::  x(k+1)= Ax(k) + Bu(k)
     .. math::  y(k) = Cx(k)
 
@@ -28,10 +29,10 @@ class CompartmentModel:
     drug : str
         can be "Propofol", "Remifentanil" or "Norepinephrine".
     model : str, optional
-        Could be "Schnider" [1]_, "Marsh_initial"[2]_, "Marsh_modified"[3]_,
-        "Shuttler"[4]_ or "Eleveld"[5_] for Propofol.
-        "Minto"[6]_, "Eleveld"[7]_ for Remifentanil.
-        only "Beloeil"[8]_ for Norepinephrine.
+        Could be "Schnider" [Schnider1999]_, "Marsh_initial"[Marsh1991]_, "Marsh_modified"[Struys2000]_,
+        "Shuttler"[Schuttler2000]_ or "Eleveld"[Eleveld2018]_ for Propofol.
+        "Minto"[Minto1997]_, "Eleveld"[Eleveld2017]_ for Remifentanil.
+        only "Beloeil"[Beloeil2005]_ for Norepinephrine.
         The default is "Minto" for Remifentanil and "Schnider" for Propofol.
     ts : float, optional
         Sampling time, in s. The default is 1.
@@ -69,25 +70,25 @@ class CompartmentModel:
 
     References
     ----------
-    .. [1] T. W. Schnider et al., “The Influence of Age on Propofol Pharmacodynamics,”
+    .. [Schnider1999] T. W. Schnider et al., “The Influence of Age on Propofol Pharmacodynamics,”
             Anesthesiology, vol. 90, no. 6, pp. 1502-1516., Jun. 1999, doi: 10.1097/00000542-199906000-00003.
-    .. [2] B. Marsh, M. White, N. morton, and G. N. C. Kenny,
+    .. [Marsh1991] B. Marsh, M. White, N. morton, and G. N. C. Kenny,
             “Pharmacokinetic model Driven Infusion of Propofol in Children,”
             BJA: British Journal of Anaesthesia, vol. 67, no. 1, pp. 41–48, Jul. 1991, doi: 10.1093/bja/67.1.41.
-    .. [3] M. M. R. F. Struys et al., “Comparison of Plasma Compartment versus  Two Methods for Effect
+    .. [Struys2000] M. M. R. F. Struys et al., “Comparison of Plasma Compartment versus  Two Methods for Effect
             Compartment–controlled Target-controlled Infusion for Propofol,”
             Anesthesiology, vol. 92, no. 2, p. 399, Feb. 2000, doi: 10.1097/00000542-200002000-00021.
-    .. [4] J. Schüttler and H. Ihmsen, “Population Pharmacokinetics of Propofol: A Multicenter Study,”
+    .. [Schuttler2000] J. Schüttler and H. Ihmsen, “Population Pharmacokinetics of Propofol: A Multicenter Study,”
             Anesthesiology, vol. 92, no. 3, pp. 727–738, Mar. 2000, doi: 10.1097/00000542-200003000-00017.
-    .. [5] D. J. Eleveld, P. Colin, A. R. Absalom, and M. M. R. F. Struys,
+    .. [Eleveld2018] D. J. Eleveld, P. Colin, A. R. Absalom, and M. M. R. F. Struys,
             “Pharmacokinetic–pharmacodynamic model for propofol for broad application in anaesthesia and sedation”
             British Journal of Anaesthesia, vol. 120, no. 5, pp. 942–959, mai 2018, doi:10.1016/j.bja.2018.01.018.
-    .. [6] C. F. Minto et al., “Influence of Age and Gender on the Pharmacokinetics
+    .. [Minto1997] C. F. Minto et al., “Influence of Age and Gender on the Pharmacokinetics
             and Pharmacodynamics of Remifentanil: I. Model Development,”
             Anesthesiology, vol. 86, no. 1, pp. 10–23, Jan. 1997, doi: 10.1097/00000542-199701000-00004.
-    .. [7] D. J. Eleveld et al., “An Allometric Model of Remifentanil Pharmacokinetics and Pharmacodynamics,”
+    .. [Eleveld2017] D. J. Eleveld et al., “An Allometric Model of Remifentanil Pharmacokinetics and Pharmacodynamics,”
             Anesthesiology, vol. 126, no. 6, pp. 1005–1018, juin 2017, doi: 10.1097/ALN.0000000000001634.
-    .. [8] H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
+    .. [Beloeil2005] H. Beloeil, J.-X. Mazoit, D. Benhamou, and J. Duranteau, “Norepinephrine kinetics and dynamics
             in septic shock and trauma patients,” BJA: British Journal of Anaesthesia,
             vol. 95, no. 6, pp. 782–788, Dec. 2005, doi: 10.1093/bja/aei259.
 
