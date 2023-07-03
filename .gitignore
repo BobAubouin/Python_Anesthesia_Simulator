@@ -7,6 +7,6 @@ example/.ipynb_checkpoints/
 # backup files
 *.back
 # docs folder
-docs/
+docs/build/
 # vscode
 .vscode/
