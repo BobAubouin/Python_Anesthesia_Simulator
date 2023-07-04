@@ -165,8 +165,8 @@ class BIS_model:
         References
         ----------
         .. [Johnson2003]  K. B. Johnson et al., “The Influence of Hemorrhagic Shock on Propofol: A Pharmacokinetic
-            and Pharmacodynamic Analysis,” Anesthesiology, vol. 99, no. 2, pp. 409–420, Aug. 2003,
-            doi: 10.1097/00000542-200308000-00023.
+                and Pharmacodynamic Analysis,” Anesthesiology, vol. 99, no. 2, pp. 409–420, Aug. 2003,
+                doi: 10.1097/00000542-200308000-00023.
 
         """
         self.c50p = self.c50p_init - 3/0.5*(1-v_ratio)
@@ -235,7 +235,7 @@ class TOL_model():
     Parameters
     ----------
     model : str, optional
-        Only 'Bouillon'[Bouillon2004]_ is available. Ignored if model_param is specified. The default is 'Bouillon'.
+        Only 'Bouillon' is available. Ignored if model_param is specified. The default is 'Bouillon'.
     model_param : list, optional
         Model parameters, model_param = [c50p, c50p, gammaP, gammaR, Preopioid intensity].
         The default is None.
@@ -254,13 +254,6 @@ class TOL_model():
         Slope of the Hill function for remifentanil effect on TOL.
     pre_intensity : float
         Preopioid intensity.
-
-    References
-    ----------
-    .. [Bouillon2004]  T. W. Bouillon et al., “Pharmacodynamic Interaction between Propofol and Remifentanil
-            Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
-            Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
-            doi: 10.1097/00000542-200406000-00006.
 
     """
 

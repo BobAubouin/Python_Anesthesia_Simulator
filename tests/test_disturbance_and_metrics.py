@@ -68,11 +68,11 @@ if __name__ == '__main__':
     fig, axs = plt.subplots(11, figsize=(14, 16))
     for i in range(5):
         axs[i].plot(George_1.dataframe['x_propo_' + str(i+1)], '-')
-        axs[i].plot(x[i, :], '-')
+        axs[i].plot(x[i, :], '--')
         axs[i].set(xlabel='t', ylabel='$xp_' + str(i+1) + '$')
         plt.grid()
         axs[i+6].plot(George_1.dataframe['x_remi_' + str(i+1)], '-')
-        axs[i+6].plot(x[i+6, :], '-')
+        axs[i+6].plot(x[i+6, :], '--')
         axs[i+6].set(xlabel='t', ylabel='$xr_' + str(i+1) + '$')
         plt.grid()
 

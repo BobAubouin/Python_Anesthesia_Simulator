@@ -319,6 +319,7 @@ class Patient:
             Remifentanil infusion rate (µg/s).
         u_nore : float:
             Norepinephrine infusion rate (µg/s).
+
         """
         # find Remifentanil and Propofol Concentration from BIS and TOL
         cep = cas.MX.sym('cep')  # effect site concentration of propofol in the optimization problem
@@ -380,7 +381,6 @@ class Patient:
         .. math:: A_{propo} x_{propo} + B_{propo} u_{propo} = 0
         .. math:: A_{remi} x_{remi} + B_{remi} u_{remi} = 0
 
-
         Parameters
         ----------
         bis_target : float
@@ -394,6 +394,7 @@ class Patient:
             Propofol infusion rate (mg/s).
         u_remi : float:
             Remifentanil infusion rate (µg/s).
+
         """
         # solve the optimization problem
         w = []

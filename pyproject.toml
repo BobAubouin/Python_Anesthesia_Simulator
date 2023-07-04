@@ -13,11 +13,11 @@ description = """Anesthesia simulator: modellize the effect of drugs (Propofol, 
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies=[
-    "numpy",
-    "control==0.9.3.post2",
-    "matplotlib",
-    "casadi",
-    "pandas"
+    "numpy==1.25.0",
+    "control==0.9.4",
+    "matplotlib==3.7.1",
+    "casadi==3.6.3",
+    "pandas==1.4.3"
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
