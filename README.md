@@ -7,10 +7,9 @@ The Python Anesthesia Simulator (PAS) models the effect of drugs on physiologica
 - **Documentation and examples:** https://python-anesthesia-simulator.readthedocs.io
 
 ## Installation
-Download the git repository and use pip to install the package:
+Use pip to install the package:
 ```python
-    git clone https://github.com/BobAubouin/Python_Anesthesia_Simulator.git
-    pip install .\Python_Anesthesia_Simulator
+    pip install git+https://github.com/BobAubouin/Python_Anesthesia_Simulator.git
 ```
 The package can be imported in your python script with:
 ```python
