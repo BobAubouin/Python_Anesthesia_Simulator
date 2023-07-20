@@ -89,7 +89,7 @@ For BIS and TOL, PAS includes respectively a surface-response model and a hierar
 
 For MAP and CO, the interaction between drugs has not been studied yet. Thus the effect of each drug is added to obtain the overall treatment effect:
 
-- For propofol values from @jeleazcovPharmacodynamicResponseModelling2015 are used for MAP. For CO, experimental values from @fairfieldHAEMODYNAMICEFFECTSPROPOFOL1991.
+- For propofol values from @jeleazcovPharmacodynamicResponseModelling2015 are used for MAP. For CO, experimental values from @fairfieldHaemodynamicEffectsPropofol1991.
 
 - For remifentanil only studies in infants were found, the parameters from  @standingPharmacokineticPharmacodynamicModeling2010b are used for the MAP effect, and the experimental results from @chanavazHaemodynamicEffectsremifentanil2005 for the CO effect.
 
