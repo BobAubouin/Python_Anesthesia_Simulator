@@ -91,7 +91,7 @@ For MAP and CO, the interaction between drugs has not been studied yet. Thus the
 
 - For propofol values from @jeleazcovPharmacodynamicResponseModelling2015 are used for MAP. For CO, experimental values from @fairfieldHaemodynamicEffectsPropofol1991.
 
-- For remifentanil only studies in infants were found, the parameters from  @standingPharmacokineticPharmacodynamicModeling2010b are used for the MAP effect, and the experimental results from @chanavazHaemodynamicEffectsremifentanil2005 for the CO effect.
+- For remifentanil only studies in infants were found, the parameters from  @standingPharmacokineticPharmacodynamicModeling2010b are used for the MAP effect, and the experimental results from @chanavazHaemodynamicEffectsRemifentanil2005 for the CO effect.
 
 - For remifentanil values from @beloeilNorepinephrineKineticsDynamics2005 are used for MAP interaction in accordance with the PK model. For the impact on CO, we extrapolate values from @monnetNorepinephrineIncreasesCardiac2011.
 
