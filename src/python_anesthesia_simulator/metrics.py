@@ -11,11 +11,9 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
     Parameters
     ----------
     time : list
-        List of time value.
+        List of time value (s).
     bis : list
         List of BIS value over time.
-    ts : float, optional
-        Sampling time in second. The default is 1.
     phase : str, optional
         Control phase, can be "maintenance", 'induction" or "total". The default is 'maintenance'.
     start_step: float, optional
