@@ -81,7 +81,7 @@ Blood loss is known to change the distribution of drugs in the body [@johnsonInf
 
 ## Pharmacodynamics
 
-Pharmacodynamics models describe the link between drug concentrations and the observed effect on physiological variables. In PAS, the considered variables are bispectral index (BIS) to characterize the hypnotic system, mean arterial pressure (MAP) and cardiac output (CO) for the hemodynamic system, and tolerance of laryngoscopy (TOL) as an analgesia indicator. Unlike @ionescuOpenSourcePatient2021a which uses richmond agitation sedation scale (RASS) to assess analgesia, TOL is chosen due to the availability of more clinical studies on this index. Since this output does not affect the system, another index could be programmed to replace it.
+Pharmacodynamics models describe the link between drug concentrations and the observed effect on physiological variables. In PAS, the considered variables are bispectral index (BIS) to characterize the hypnotic system, mean arterial pressure (MAP) and cardiac output (CO) for the hemodynamic system, and tolerance of laryngoscopy (TOL) as an analgesia indicator. Unlike @ionescuOpenSourcePatient2021a which uses Richmond agitation sedation scale (RASS) to assess analgesia, TOL is chosen due to the availability of more clinical studies on this index. Since this output does not affect the system, another index could be programmed to replace it.
 
 The standard way to model pharmacodynamics is to consider a delay between a rise in blood concentration and the appearance of the physiological effect by adding an effect site compartments. A Hill curve was then used to model the relation between the effect site drug concentration and the dedicated effect.
 
