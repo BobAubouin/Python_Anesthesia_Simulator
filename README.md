@@ -15,6 +15,13 @@ The package can be imported in your python script with:
 ```python
     import python_anesthesia_simulator as pas
 ```
+## Citation
+
+To cite PAS in your work, cite this paper:
+```
+Aubouin-Pairault et al., (2023). PAS: a Python Anesthesia Simulator for drug control. Journal of Open Source Software, 8(88), 5480, https://doi.org/10.21105/joss.05480
+```
+
 
 ## Guidelines
 - To report a bug or request a feature please open an issue.
@@ -45,7 +52,7 @@ If you want to contact me for any reason, I'm available by [mail](bob.aubouin-pa
 _GNU General Public License 3.0_
 
 ## Project status
-Submitted to JOSS
+Published in the journal of Open Source Software!
 
 ## Author
 Bob Aubouin--Paitault
