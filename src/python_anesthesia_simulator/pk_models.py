@@ -1,5 +1,6 @@
 # Standard import
 import copy
+from typing import Optional
 
 # Third party imports
 import numpy as np
@@ -561,13 +562,15 @@ class CompartmentModel:
         self.y = self.discretize_sys.output(None, self.x, u=u)  # first input is ignored
         return self.y
 
-    def full_sim(self, u: list) -> list:
+    def full_sim(self, u: list, x0: Optional[np.array] = None) -> list:
         """ Simulate PK model with a given input.
 
         Parameters
         ----------
         u : list
             Infusion rate (mg/s for Propofol, µg/s for Remifentanil and Norepinephrine).
+        x0 : numpy array, optional
+            Initial state. The default is None.
 
         Returns
         -------
@@ -576,7 +579,9 @@ class CompartmentModel:
             (µg/mL for Propofol and ng/mL for Remifentanil and Norepinephrine).
 
         """
-        _, _, x = control.forced_response(self.discretize_sys, U=u, return_x=True)
+        if x0 is None:
+            x0 = np.array(len(self.A_init))
+        _, _, x = control.forced_response(self.discretize_sys, U=u, X0=x0, return_x=True)
         return x
 
     def update_param_CO(self, CO_ratio: float):

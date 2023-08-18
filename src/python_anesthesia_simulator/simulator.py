@@ -1,5 +1,5 @@
 # Standard import
-
+from typing import Optional
 # Third party imports
 import numpy as np
 import control
@@ -575,17 +575,24 @@ class Patient:
 
         self.dataframe = pd.concat((self.dataframe, pd.DataFrame(new_line, index=[1])), ignore_index=True)
 
-    def full_sim(self, u_propo: list = None, u_remi: list = None, u_nore: list = None):
+    def full_sim(self, u_propo: Optional[np.array] = None, u_remi: Optional[np.array] = None, u_nore: Optional[np.array] = None,
+                 x0_propo: Optional[np.array] = None, x0_remi: Optional[np.array] = None, x0_nore: Optional[np.array] = None) -> pd.DataFrame:
         r"""Simulate the patient model with the given inputs.
 
         Parameters
         ----------
-        u_propo : list
+        u_propo : numpy array, optional
             Propofol infusion rate (mg/s).
-        u_remi : list
+        u_remi : numpy array, optional
             Remifentanil infusion rate (µg/s).
-        u_nore : list
+        u_nore : numpy array, optional
             Norepinephrine infusion rate (µg/s).
+        x0_propo : numpy array, optional
+            Initial state of the propofol PK model. The default is zeros.
+        x0_remi : numpy array, optional
+            Initial state of the remifentanil PK model. The default is zeros.
+        x0_nore : numpy array, optional
+            Initial state of the norepinephrine PK model. The default is zeros.
 
         Returns
         -------
@@ -617,9 +624,9 @@ class Patient:
         self.init_dataframe()
 
         # simulate
-        x_propo = self.propo_pk.full_sim(u_propo)
-        x_remi = self.remi_pk.full_sim(u_remi)
-        x_nore = self.nore_pk.full_sim(u_nore)
+        x_propo = self.propo_pk.full_sim(u_propo, x0_propo)
+        x_remi = self.remi_pk.full_sim(u_remi, x0_remi)
+        x_nore = self.nore_pk.full_sim(u_nore, x0_nore)
 
         # compute outputs
         bis = self.bis_pd.compute_bis(x_propo[3, :], x_remi[3, :])
