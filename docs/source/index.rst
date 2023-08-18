@@ -13,9 +13,10 @@ the outputs are the Bispectral index (BIS), Mean Arterial Pressure (MAP), Cardia
 of Laryngoscopy (TOL). PAS includes different well-known models along with their uncertainties to simulate 
 inter-patient variability. Blood loss can also be simulated to assess the controller's performance in a 
 shock scenario. Finally, PAS includes standard disturbance profiles and metric computation to facilitate 
-the evaluation of the controller's performances. This document provides the statement of need and the 
-documentation to use the package. Some examples are also available in the package folder to better 
-understand how to use it.
+the evaluation of the controller's performances. This web page provides a brief overview of the simulator 
+and its capabilities. For more details, please refer to the following paper: https://joss.theoj.org/papers/10.21105/joss.05480.
+If you are using PAS for your research, please cite the previous paper.
+
 
 
 .. toctree::
