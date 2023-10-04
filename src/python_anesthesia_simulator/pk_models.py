@@ -580,7 +580,7 @@ class CompartmentModel:
 
         """
         if x0 is None:
-            x0 = np.array(len(self.A_init))
+            x0 = np.zeros(len(self.A_init))
         _, _, x = control.forced_response(self.discretize_sys, U=u, X0=x0, return_x=True)
         return x
 
