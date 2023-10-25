@@ -21,7 +21,8 @@ class BIS_model:
     Parameters
     ----------
     hill_model : str, optional
-        Only 'Bouillon' [Bouillon2004]_ is available. Ignored if hill_param is specified.
+        'Bouillon' [Bouillon2004]_ and 'Aubouin' [Aubouin2023] are available.
+        Ignored if hill_param is specified. Default is 'Bouilllon'.
     hill_param : list, optional
         Parameter of the Hill model (Propo Remi interaction)
         list [c50p_BIS, c50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS]:
@@ -63,6 +64,8 @@ class BIS_model:
             Regarding Hypnosis, Tolerance of Laryngoscopy, Bispectral Index, and Electroencephalographic
             Approximate Entropy,” Anesthesiology, vol. 100, no. 6, pp. 1353–1372, Jun. 2004,
             doi: 10.1097/00000542-200406000-00006.
+    .. [Aubouin2023]  A. Aubouin et al., “Comparison of Multiple Kalman Filter and Moving Horizon
+            Estimator for the Anesthesia Process” draft 2023.
 
     """
 
@@ -104,6 +107,23 @@ class BIS_model:
             cv_beta = 0
             cv_E0 = 0
             cv_Emax = 0
+        elif hill_model == 'Aubouin':
+            # See [Aubouin2023] A. Aubouin et al., “Comparison of Multiple Kalman Filter and Moving Horizon
+            # Estimator for the Anesthesia Process” draft 2023.
+
+            self.c50p = 4.42
+            self.c50r = 33.4
+            self.gamma = 1.73
+            self.beta = 0
+            self.E0 = 97.4
+            self.Emax = self.E0
+
+            # coefficient of variation
+            cv_c50p = 0.36
+            cv_c50r = 0.11
+            cv_gamma = 0.6
+
+        if random and hill_param is None:
             # estimation of log normal standard deviation
             w_c50p = np.sqrt(np.log(1+cv_c50p**2))
             w_c50r = np.sqrt(np.log(1+cv_c50r**2))
