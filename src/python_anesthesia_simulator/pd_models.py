@@ -122,6 +122,9 @@ class BIS_model:
             cv_c50p = 0.36
             cv_c50r = 0.11
             cv_gamma = 0.6
+            cv_beta = 0
+            cv_E0 = 0
+            cv_Emax = 0
 
         if random and hill_param is None:
             # estimation of log normal standard deviation
