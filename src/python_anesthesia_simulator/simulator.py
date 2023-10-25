@@ -60,6 +60,8 @@ class Patient:
         Name of the propofol PK model.
     model_remi : str
         Name of the remifentanil PK model.
+    model_bis : str
+        Name of the BIS PD model.
     hill_param : list
         Parameter of the BIS model (Propo Remi interaction)
         list [C50p_BIS, C50r_BIS, gamma_BIS, beta_BIS, E0_BIS, Emax_BIS].
@@ -113,6 +115,7 @@ class Patient:
                  map_base: float = 90,
                  model_propo: str = 'Schnider',
                  model_remi: str = 'Minto',
+                 model_bis: str = 'Bouillon',
                  ts: float = 1,
                  hill_param: list = None,
                  random_PK: bool = False,
@@ -159,7 +162,7 @@ class Patient:
                                         ts=self.ts, model=model_remi, random=random_PK)
 
         # Init PD model for BIS
-        self.bis_pd = BIS_model(hill_model='Bouillon', hill_param=hill_param, random=random_PD)
+        self.bis_pd = BIS_model(hill_model=model_bis, hill_param=hill_param, random=random_PD)
         self.hill_param = self.bis_pd.hill_param
 
         # Init PD model for TOL
