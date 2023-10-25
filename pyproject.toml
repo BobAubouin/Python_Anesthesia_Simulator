@@ -6,7 +6,8 @@ build-backend = "hatchling.build"
 name = "python_anesthesia_simulator"
 version = "1.0.0"
 authors = [
-  { name="Bob Aubouin--Pairault", email="bob.aubouin@tutanota.com" },
+  {name="Bob Aubouin--Pairault"},
+  {email="bob.aubouin@tutanota.com"},
 ]
 description = """Anesthesia simulator: modellize the effect of drugs (Propofol, Remifentanil, Norepinephrine) \
                  during general anesthesia. Specially build for control design."""
@@ -19,6 +20,7 @@ dependencies=[
     "casadi==3.6.3",
     "pandas==1.4.3"
 ]
+license = { text = "GNU General Public License v3 (GPLv3)" }
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
