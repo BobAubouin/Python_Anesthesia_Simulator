@@ -287,7 +287,7 @@ class Patient:
             white_noise = np.random.normal(0, self.bis_noise_std, 1000)
             _, self.bis_noise = control.forced_response(self.noise_filter_d, U=white_noise, squeeze=True)
         self.bis += self.bis_noise[self.noise_index]
-        self.bis = min(100, self.bis)
+        self.bis = np.clip(self.bis, 0, 100)
         # random noise for MAP and CO
         self.map += np.random.normal(scale=self.map_noise_std)
         self.co += np.random.normal(scale=self.co_noise_std)
