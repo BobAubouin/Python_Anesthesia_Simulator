@@ -197,6 +197,7 @@ class Patient:
         # Save data
         if self.save_data_bool:
             self.init_dataframe()
+            self.save_data()
 
     def one_step(self, u_propo: float = 0, u_remi: float = 0, u_nore: float = 0,
                  blood_rate: float = 0, dist: list = [0]*3, noise: bool = True) -> tuple[float, float, float, float]:
@@ -264,9 +265,13 @@ class Patient:
 
         # Save data
         if self.save_data_bool:
+            index = int(self.Time/self.ts)
+            self.dataframe.loc[index, 'u_propo'] = u_propo
+            self.dataframe.loc[index, 'u_remi'] = u_remi
+            self.dataframe.loc[index, 'u_nore'] = u_nore
             # compute time
             self.Time += self.ts
-            self.save_data([u_propo, u_remi, u_nore])
+            self.save_data()
 
         return (self.bis, self.co, self.map, self.tol)
 
