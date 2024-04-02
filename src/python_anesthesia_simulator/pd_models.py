@@ -107,24 +107,6 @@ class BIS_model:
             cv_beta = 0
             cv_E0 = 0
             cv_Emax = 0
-        elif hill_model == 'Aubouin':
-            # See [Aubouin2023] A. Aubouin et al., “Comparison of Multiple Kalman Filter and Moving Horizon
-            # Estimator for the Anesthesia Process” draft 2023.
-
-            self.c50p = 4.42
-            self.c50r = 33.4
-            self.gamma = 1.73
-            self.beta = 0
-            self.E0 = 97.4
-            self.Emax = self.E0
-
-            # coefficient of variation
-            cv_c50p = 0.36
-            cv_c50r = 0.11
-            cv_gamma = 0.6
-            cv_beta = 0
-            cv_E0 = 0
-            cv_Emax = 0
 
         if random and hill_param is None:
             # estimation of log normal standard deviation

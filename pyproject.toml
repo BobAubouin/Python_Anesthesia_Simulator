@@ -17,7 +17,7 @@ dependencies=[
     "numpy",
     "control==0.9.4",
     "matplotlib",
-    "casadi==3.6.3",
+    "casadi>=3.6.3",
     "pandas"
 ]
 license = { text = "GNU General Public License v3 (GPLv3)" }

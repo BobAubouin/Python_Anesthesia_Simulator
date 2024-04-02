@@ -8,7 +8,7 @@ import control
 
 
 class CompartmentModel:
-    """PKmodel class modelize the PK model of propofol or remifentanil drug. Simulate the drug distribution in the body.
+    """PKmodel class modelize the PK model of propofol, remifentanil or norepinephrine drug. Simulate the drug distribution in the body.
 
     Use a 6 compartement model for propofol, a 5 compartement model for remifentanil,
     and a 1 compartement model for norepinephrine.
