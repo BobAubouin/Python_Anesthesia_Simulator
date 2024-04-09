@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 
 
 def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
@@ -23,27 +24,29 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
 
     Returns
     -------
-    TT : float
-        Observed time-to-target (in minute) required for reaching first time the target interval of [55,45] BIS values.
-    BIS_NADIR: float
-        for "induction" or "total" phase. The lowest observed BIS value during induction phase.
-    ST10: float
-        for "induction" or "total" phase. Settling time (in minute) on the reference BIS value,
-        defined within ± 5BIS(i.e., between 45 and 55 BIS)and stay within this BIS range.
-    ST20: float
-        for "induction" or "total" phase. Settling time (in minute) on the reference BIS value,
-        defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range.
-    US: float
-        for "induction" or "total" phase. Undershoot, defined as the BIS value that exceeds the
-        limit of the defined BIS interval, namely, the 45 BIS value.
-    TTp : float
-        Time to target (in minute) after the positive step disturbance.
-    BIS_NADIRp: float
-        for "maintenance" or "total" phase. Minimum BIS vamue after the positive step disturbance.
-    TTpn: float
-        for "maintenance" or "total" phase. Time to target (in minute) after the negative step disturbance.
-    BIS_NADIRn: float
-        for "maintenance" or "total" phase. Maximum BIS vamue after the negative step disturbance.
+    df : pd.DataFrame
+        Dataframe containing the computed metrics:
+        TT : float
+            Observed time-to-target (in minute) required for reaching first time the target interval of [55,45] BIS values.
+        BIS_NADIR: float
+            for "induction" or "total" phase. The lowest observed BIS value during induction phase.
+        ST10: float
+            for "induction" or "total" phase. Settling time (in minute) on the reference BIS value,
+            defined within ± 5BIS(i.e., between 45 and 55 BIS)and stay within this BIS range.
+        ST20: float
+            for "induction" or "total" phase. Settling time (in minute) on the reference BIS value,
+            defined within ± 10BIS(i.e., between 40 and 60 BIS) and stay within this BIS range.
+        US: float
+            for "induction" or "total" phase. Undershoot, defined as the BIS value that exceeds the
+            limit of the defined BIS interval, namely, the 45 BIS value.
+        TTp : float
+            Time to target (in minute) after the positive step disturbance.
+        BIS_NADIRp: float
+            for "maintenance" or "total" phase. Minimum BIS vamue after the positive step disturbance.
+        TTpn: float
+            for "maintenance" or "total" phase. Time to target (in minute) after the negative step disturbance.
+        BIS_NADIRn: float
+            for "maintenance" or "total" phase. Maximum BIS vamue after the negative step disturbance.
 
     References
     ----------
@@ -72,7 +75,12 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
                     ST20 = time[j]/60
             else:
                 ST20 = np.nan
-        return TT, BIS_NADIR, ST10, ST20, US
+        df = pd.DataFrame({'TT': TT,
+                           'BIS_NADIR': BIS_NADIR,
+                           'ST10': ST10,
+                           'ST20': ST20,
+                           'US': US})
+        return df
 
     elif phase == 'maintenance':
         # find start step index
@@ -91,8 +99,11 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
             if bis[j] > 45:
                 TTn = (time[j]-end_step)/60
                 break
-
-        return TTp, BIS_NADIRp, TTn, BIS_NADIRn
+        df = pd.DataFrame({'TTp': TTp,
+                           'BIS_NADIRp': BIS_NADIRp,
+                           'TTn': TTn,
+                           'BIS_NADIRn': BIS_NADIRn})
+        return df
 
     elif phase == 'total':
         # consider induction as the first 10 minutes
@@ -132,5 +143,13 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
             if bis[j] > 45:
                 TTn = (time[j]-time[index_end])/60
                 break
-
-        return TT, BIS_NADIR, ST10, ST20, US, TTp, BIS_NADIRp, TTn, BIS_NADIRn
+        df = pd.DataFrame({'TT': TT,
+                           'BIS_NADIR': BIS_NADIR,
+                           'ST10': ST10,
+                           'ST20': ST20,
+                           'US': US,
+                           'TTp': TTp,
+                           'BIS_NADIRp': BIS_NADIRp,
+                           'TTn': TTn,
+                           'BIS_NADIRn': BIS_NADIRn})
+        return df
