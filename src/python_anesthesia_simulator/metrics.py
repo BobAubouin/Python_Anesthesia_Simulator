@@ -75,11 +75,11 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
                     ST20 = time[j]/60
             else:
                 ST20 = np.nan
-        df = pd.DataFrame({'TT': TT,
-                           'BIS_NADIR': BIS_NADIR,
-                           'ST10': ST10,
-                           'ST20': ST20,
-                           'US': US})
+        df = pd.DataFrame([{'TT': TT,
+                            'BIS_NADIR': BIS_NADIR,
+                            'ST10': ST10,
+                            'ST20': ST20,
+                            'US': US}])
         return df
 
     elif phase == 'maintenance':
@@ -99,10 +99,10 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
             if bis[j] > 45:
                 TTn = (time[j]-end_step)/60
                 break
-        df = pd.DataFrame({'TTp': TTp,
-                           'BIS_NADIRp': BIS_NADIRp,
-                           'TTn': TTn,
-                           'BIS_NADIRn': BIS_NADIRn})
+        df = pd.DataFrame([{'TTp': TTp,
+                            'BIS_NADIRp': BIS_NADIRp,
+                            'TTn': TTn,
+                            'BIS_NADIRn': BIS_NADIRn}])
         return df
 
     elif phase == 'total':
@@ -143,13 +143,13 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
             if bis[j] > 45:
                 TTn = (time[j]-time[index_end])/60
                 break
-        df = pd.DataFrame({'TT': TT,
-                           'BIS_NADIR': BIS_NADIR,
-                           'ST10': ST10,
-                           'ST20': ST20,
-                           'US': US,
-                           'TTp': TTp,
-                           'BIS_NADIRp': BIS_NADIRp,
-                           'TTn': TTn,
-                           'BIS_NADIRn': BIS_NADIRn})
+        df = pd.DataFrame([{'TT': TT,
+                            'BIS_NADIR': BIS_NADIR,
+                            'ST10': ST10,
+                            'ST20': ST20,
+                            'US': US,
+                            'TTp': TTp,
+                            'BIS_NADIRp': BIS_NADIRp,
+                            'TTn': TTn,
+                            'BIS_NADIRn': BIS_NADIRn}])
         return df
