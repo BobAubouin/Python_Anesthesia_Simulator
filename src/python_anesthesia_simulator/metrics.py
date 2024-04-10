@@ -107,7 +107,7 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
 
     elif phase == 'total':
         # consider induction as the first 10 minutes
-        index_10 = np.where(np.array(time) == 10*60)[0][0]
+        index_10 = np.where(np.array(time) == start_step)[0][0]-1
         bis_induction = bis[:index_10]
         BIS_NADIR = min(bis_induction)
         US = max(0, 45 - BIS_NADIR)
@@ -153,3 +153,27 @@ def compute_control_metrics(time: list, bis: list, phase: str = 'maintenance',
                             'TTn': TTn,
                             'BIS_NADIRn': BIS_NADIRn}])
         return df
+
+
+def intergal_absolut_error(time: list, bis: list, bis_target: float = 50):
+    """Compute the integral of the absolute error.
+
+    This function compute the integral of the absolute error between the BIS value and the target value.
+
+    Parameters
+    ----------
+    time : list
+        List of time value (s).
+    bis : list
+        List of BIS value over time.
+    bis_target : float, optional
+        Target BIS value. The default is 50.
+
+    Returns
+    -------
+    IAE : float
+        Integral of the absolute error.
+
+    """
+    iae = np.trapz(np.abs(np.array(bis)-bis_target), time)
+    return iae
