@@ -242,7 +242,7 @@ def new_metrics_induction(time: list, bis: list):
     return df
 
 
-def new_metric_maintenance(time: list, bis: list):
+def new_metrics_maintenance(time: list, bis: list):
     """Compute new metrics for maintenance of closed loop anesthesia.
 
     Parameters
