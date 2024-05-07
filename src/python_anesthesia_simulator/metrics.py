@@ -198,13 +198,13 @@ def new_metrics_induction(time: list, bis: list):
         IAE : float
             Integral of the absolute error.
         Sleep_Time : float
-            Time to reach BIS < 60 and stay below 60.
+            Time to reach BIS < 60 and stay below 60 (minutes).
         Low BIS time : float
-            Time passed with BIS < 30.
+            Time passed with BIS < 30 (seconds).
         Lowest BIS : float
             Lowest BIS value.
         Settling time : float
-            Time to reach BIS < 60 and stay within [40, 60].
+            Time to reach BIS < 60 and stay within [40, 60] (minutes).
     """
     results = {}
     # Integral of the absolute error
@@ -223,7 +223,7 @@ def new_metrics_induction(time: list, bis: list):
     # Low BIS time
     ts = time[1] - time[0]
     low_bis_index = np.where(np.array(bis) < 30)[0]
-    low_bis_time = len(low_bis_index)*ts/60
+    low_bis_time = len(low_bis_index)*ts
     results['Low BIS time'] = low_bis_time
     # Lowest BIS
     lowest_bis = min(bis)
@@ -260,7 +260,7 @@ def new_metrics_maintenance(time: list, bis: list):
         IAE : float
             Integral of the absolute error.
         Time out of range : float
-            Time passed with BIS out of [40, 60].
+            Time passed with BIS out of [40, 60] (seconds).
         Lowest BIS : float
             Lowest BIS value.
         Highest BIS : float
@@ -272,9 +272,9 @@ def new_metrics_maintenance(time: list, bis: list):
     # Time out of range
     ts = time[1] - time[0]
     out_range_index = np.where(np.array(bis) < 40)[0]
-    out_range_time = len(out_range_index)*ts/60
+    out_range_time = len(out_range_index)*ts
     out_range_index = np.where(np.array(bis) > 60)[0]
-    out_range_time += len(out_range_index)*ts/60
+    out_range_time += len(out_range_index)*ts
     results['Time out of range'] = out_range_time
     # Lowest BIS
     lowest_bis = min(bis)
