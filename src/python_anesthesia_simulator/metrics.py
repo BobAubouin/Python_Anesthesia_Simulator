@@ -177,3 +177,110 @@ def intergal_absolut_error(time: list, bis: list, bis_target: float = 50):
     """
     iae = np.trapz(np.abs(np.array(bis)-bis_target), time)
     return iae
+
+
+def new_metrics_induction(time: list, bis: list):
+    """Compute new metrics for induction of closed loop anesthesia.
+
+    This function compute new metrics for closed loop anesthesia.
+
+    Parameters
+    ----------
+    time : list
+        List of time value (s).
+    bis : list
+        List of BIS value over time.
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Dataframe containing the computed metrics:
+        IAE : float
+            Integral of the absolute error.
+        Sleep_Time : float
+            Time to reach BIS < 60 and stay below 60.
+        Low BIS time : float
+            Time passed with BIS < 30.
+        Lowest BIS : float
+            Lowest BIS value.
+        Settling time : float
+            Time to reach BIS < 60 and stay within [40, 60].
+    """
+    results = {}
+    # Integral of the absolute error
+    iae = intergal_absolut_error(time, bis)
+    results['IAE'] = iae
+    # Sleep time
+    sleep_time = np.nan
+    for j in range(len(bis)-1, -1, -1):
+        if bis[j] > 60:
+            if j == len(bis)-1:
+                sleep_time = time[j]/60
+            else:
+                sleep_time = time[j+1]/60
+            break
+    results['Sleep_Time'] = sleep_time
+    # Low BIS time
+    ts = time[1] - time[0]
+    low_bis_index = np.where(np.array(bis) < 30)[0]
+    low_bis_time = len(low_bis_index)*ts/60
+    results['Low BIS time'] = low_bis_time
+    # Lowest BIS
+    lowest_bis = min(bis)
+    results['Lowest BIS'] = lowest_bis
+    # Settling time
+    settling_time = np.nan
+    for j in range(len(bis)-1, -1, -1):
+        if bis[j] > 60 or bis[j] < 40:
+            if j == len(bis)-1:
+                settling_time = time[j]/60
+            else:
+                settling_time = time[j+1]/60
+            break
+    results['Settling time'] = settling_time
+    df = pd.DataFrame([results])
+    return df
+
+
+def new_metric_maintenance(time: list, bis: list):
+    """Compute new metrics for maintenance of closed loop anesthesia.
+
+    Parameters
+    ----------
+    time : list
+        List of time value (s).
+    bis : list
+        List of BIS value over time.
+
+
+    Returns
+    -------
+    df : pd.DataFrame
+        Dataframe containing the computed metrics:
+        IAE : float
+            Integral of the absolute error.
+        Time out of range : float
+            Time passed with BIS out of [40, 60].
+        Lowest BIS : float
+            Lowest BIS value.
+        Highest BIS : float
+            Highest BIS value.
+    """
+    IAE = intergal_absolut_error(time, bis)
+    results = {}
+    results['IAE'] = IAE
+    # Time out of range
+    ts = time[1] - time[0]
+    out_range_index = np.where(np.array(bis) < 40)[0]
+    out_range_time = len(out_range_index)*ts/60
+    out_range_index = np.where(np.array(bis) > 60)[0]
+    out_range_time += len(out_range_index)*ts/60
+    results['Time out of range'] = out_range_time
+    # Lowest BIS
+    lowest_bis = min(bis)
+    results['Lowest BIS'] = lowest_bis
+    # Highest BIS
+    highest_bis = max(bis)
+    results['Highest BIS'] = highest_bis
+    df = pd.DataFrame([results])
+    return df
