@@ -207,8 +207,8 @@ class BIS_model:
                     real_root = np.real(el)
                     break
             cep = real_root*self.c50p
-        except:
-            print('bug')
+        except Exception as e:
+            print(f'bug: {e}')
 
         return cep
 

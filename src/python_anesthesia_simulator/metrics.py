@@ -200,7 +200,7 @@ def new_metrics_induction(time: list, bis: list):
         Sleep_Time : float
             Time to reach BIS < 60 and stay below 60 (minutes).
         Low BIS time : float
-            Time passed with BIS < 30 (seconds).
+            Time passed with BIS < 40 (seconds).
         Lowest BIS : float
             Lowest BIS value.
         Settling time : float
@@ -222,7 +222,7 @@ def new_metrics_induction(time: list, bis: list):
     results['Sleep_Time'] = sleep_time
     # Low BIS time
     ts = time[1] - time[0]
-    low_bis_index = np.where(np.array(bis) < 30)[0]
+    low_bis_index = np.where(np.array(bis) < 40)[0]
     low_bis_time = len(low_bis_index)*ts
     results['Low BIS time'] = low_bis_time
     # Lowest BIS
