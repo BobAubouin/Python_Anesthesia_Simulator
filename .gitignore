@@ -10,3 +10,5 @@ paper/.obsidian/
 docs/build/
 # vscode
 .vscode/
+# python env
+.venv/
